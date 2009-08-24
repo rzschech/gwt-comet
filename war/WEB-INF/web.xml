@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE web-app PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN" "http://java.sun.com/dtd/web-app_2_3.dtd">
+<web-app>
+ 	<!-- Servlets -->
+	<servlet>
+		<servlet-name>throughputServlet</servlet-name>
+		<servlet-class>net.zschech.gwt.comettest.server.ThroughputTestServlet</servlet-class>
+	</servlet>
+	<servlet>
+		<servlet-name>latencyServlet</servlet-name>
+		<servlet-class>net.zschech.gwt.comettest.server.LatencyTestServlet</servlet-class>
+	</servlet>
+	<servlet>
+		<servlet-name>connectionServlet</servlet-name>
+		<servlet-class>net.zschech.gwt.comettest.server.ConnectionTestServlet</servlet-class>
+	</servlet>
+	<servlet>
+		<servlet-name>escapeServlet</servlet-name>
+		<servlet-class>net.zschech.gwt.comettest.server.EscapeTestServlet</servlet-class>
+	</servlet>
+	<servlet>
+		<servlet-name>serializeServlet</servlet-name>
+		<servlet-class>net.zschech.gwt.comettest.server.SerializeTestServlet</servlet-class>
+	</servlet>
+	
+	<servlet-mapping>
+		<servlet-name>throughputServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/throughput</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>latencyServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/latency</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>connectionServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/connection</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>escapeServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/escape</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>serializeServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/serialize</url-pattern>
+	</servlet-mapping>
+
+ 	<!-- Default page to serve -->
+	<welcome-file-list>
+		<welcome-file>CometTest.html</welcome-file>
+	</welcome-file-list>
+</web-app>
