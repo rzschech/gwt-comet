@@ -141,9 +141,12 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		response.setCharacterEncoding("UTF-8");
 		
 		OutputStream outputStream = response.getOutputStream();
-		if (request.getScheme().equals("https")) {
-			flushable = (Flushable) get("_generator._endp._socket.sockOutput", outputStream);
-		}
+		// A hack to get SSL AppOutputStream to flush the underlying socket. The property path below only works on
+		// Jetty.
+		// Need to extend this to support more servers and work in secure environments
+		// if (request.getScheme().equals("https")) {
+		// flushable = (Flushable) get("_generator._endp._socket.sockOutput", outputStream);
+		// }
 		String acceptEncoding = request.getHeader("Accept-Encoding");
 		if (acceptEncoding != null && acceptEncoding.contains("deflate")) {
 			response.setHeader("Content-Encoding", "deflate");
@@ -236,9 +239,11 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 	}
 	
+	private static boolean logged = false;
+	
 	private Object get(String path, Object object) {
-		for (String property : path.split("\\.")) {
-			try {
+		try {
+			for (String property : path.split("\\.")) {
 				Class<?> c = object.getClass();
 				while (true) {
 					try {
@@ -255,11 +260,15 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 					}
 				}
 			}
-			catch (Exception e) {
-				e.printStackTrace();
-			}
+			return object;
 		}
-		return object;
+		catch (Exception e) {
+			if (!logged) {
+				servlet.log("Error accessing underlying socket output stream to improve flushing", e);
+				logged = true;
+			}
+			return null;
+		}
 	}
 	
 	void tryHeartbeat() {
