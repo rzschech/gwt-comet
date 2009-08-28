@@ -46,8 +46,13 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 		PADDING_STRING = new String(padding);
 	}
 	
+	private final boolean chrome;
+	
 	public HTTPRequestCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, CometServlet servlet, AsyncServlet async, int heartbeat) {
 		super(request, response, serializationPolicy, servlet, async, heartbeat);
+		
+		String userAgent = getRequest().getHeader("User-Agent");
+		chrome = userAgent != null && userAgent.contains("Chrome");
 	}
 	
 	@Override
@@ -79,8 +84,7 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 		}
 		
 		int paddingRequired;
-		String userAgent = getRequest().getHeader("User-Agent");
-		if (userAgent != null && userAgent.contains("Chrome")) {
+		if (chrome) {
 			if (getRequest().getScheme().equals("https")) {
 				paddingRequired = 64;
 			}
@@ -127,7 +131,15 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	
 	@Override
 	protected boolean isOverMaxLength(int written) {
-		return written > 2 * 1024 * 1024;
+		if (chrome) {
+			// Chrome seems to have a problem with lots of small messages consuming lots of memory.
+			// I'm guessing for each readyState = 3 event it copies the responseText from its IO system to its JavaScript
+			// engine and does not clean up all the events until the HTTP request is finished.
+			return written > 1024;
+		}
+		else {
+			return written > 2 * 1024 * 1024;
+		}
 	}
 	
 	@Override
