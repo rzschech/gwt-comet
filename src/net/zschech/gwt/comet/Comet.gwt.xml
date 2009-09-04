@@ -20,7 +20,10 @@
 
 	<replace-with class="net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport">
 		<when-type-is class="net.zschech.gwt.comet.client.impl.CometTransport"/>
-		<when-property-is name="user.agent" value="ie6"/>
+		<any>
+			<when-property-is name="user.agent" value="ie6"/>
+			<when-property-is name="user.agent" value="ie8"/>
+		</any>
 	</replace-with>
 	
 	<replace-with class="net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport">
