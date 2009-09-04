@@ -272,7 +272,7 @@ public class CometTestEntryPoint implements EntryPoint {
 				disconnected = Duration.currentTimeMillis();
 				log("Disconnected " + (disconnected - connected) + "ms");
 				log("Count " + count);
-				stop();
+//				stop();
 			}
 			
 			@Override
@@ -284,7 +284,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			@Override
 			public void onError(Throwable exception, boolean connected) {
 				log(exception.toString());
-				stop();
+//				stop();
 			}
 		});
 	}
