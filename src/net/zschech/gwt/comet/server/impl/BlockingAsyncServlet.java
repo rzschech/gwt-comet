@@ -79,43 +79,43 @@ public class BlockingAsyncServlet extends AsyncServlet {
 		else {
 			Queue<? extends Serializable> queue = session.getQueue();
 			List<Serializable> messages = batchSize == 1 ? null : new ArrayList<Serializable>(batchSize);
-			synchronized (session) {
-				while (session.isValid() && !response.isTerminated()) {
-					try {
+			while (session.isValid() && !response.isTerminated()) {
+				try {
+					synchronized (session) {
 						while (queue.isEmpty() && session.isValid() && !response.isTerminated()) {
 							session.wait();
 						}
-						
-						synchronized (response) {
-							if (session.isValid() && !response.isTerminated()) {
-								Serializable message = queue.remove();
-								if (batchSize == 1) {
-									response.write(message, queue.isEmpty());
-								}
-								else {
-									messages.add(message);
-									for (int i = 0; i < batchSize - 1; i++) {
-										message = queue.poll();
-										if (message == null) {
-											break;
-										}
-										messages.add(message);
+					}
+					
+					synchronized (response) {
+						if (session.isValid() && !response.isTerminated()) {
+							Serializable message = queue.remove();
+							if (batchSize == 1) {
+								response.write(message, queue.isEmpty());
+							}
+							else {
+								messages.add(message);
+								for (int i = 0; i < batchSize - 1; i++) {
+									message = queue.poll();
+									if (message == null) {
+										break;
 									}
-									response.write(messages, queue.isEmpty());
-									messages.clear();
+									messages.add(message);
 								}
+								response.write(messages, queue.isEmpty());
+								messages.clear();
 							}
 						}
 					}
-					catch (InterruptedException e) {
-						response.terminate();
-						throw new InterruptedIOException(e.getMessage());
-					}
 				}
-				
-				if (!session.isValid() && !response.isTerminated()) {
+				catch (InterruptedException e) {
 					response.terminate();
+					throw new InterruptedIOException(e.getMessage());
 				}
+			}
+			
+			if (!session.isValid() && !response.isTerminated()) {
+				response.terminate();
 			}
 		}
 		return null;
