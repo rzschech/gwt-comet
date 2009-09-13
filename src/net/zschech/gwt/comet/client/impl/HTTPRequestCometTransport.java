@@ -19,17 +19,11 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.zschech.gwt.comet.client.CometClient;
 import net.zschech.gwt.comet.client.CometException;
-import net.zschech.gwt.comet.client.CometListener;
 import net.zschech.gwt.comet.client.CometSerializer;
-import net.zschech.gwt.comet.client.CometTimeoutException;
 
-import com.google.gwt.http.client.Request;
-import com.google.gwt.http.client.RequestBuilder;
-import com.google.gwt.http.client.RequestCallbackEx;
+import com.google.gwt.core.client.JavaScriptObject;
 import com.google.gwt.http.client.RequestException;
-import com.google.gwt.http.client.RequestTimeoutException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.user.client.rpc.SerializationException;
 import com.google.gwt.user.client.rpc.StatusCodeException;
@@ -67,90 +61,92 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
 public class HTTPRequestCometTransport extends CometTransport {
 	
 	private static final String SEPARATOR = "\r\n";
-	private RequestBuilder requestBuilder;
-	private Request request;
+	private JavaScriptObject xmlHttpRequest;
 	private boolean expectingDisconnection;
-	
-	@Override
-	public void initiate(CometClient client, CometListener listener) {
-		super.initiate(client, listener);
-		requestBuilder = new RequestBuilder(RequestBuilder.GET, client.getUrl());
-		requestBuilder.setHeader("Accept", "text/plain");
-		requestBuilder.setHeader("Cache-Control", "no-cache");
-	}
+	private int read;
 	
 	@Override
 	public void connect() {
 		expectingDisconnection = false;
-		try {
-			request = requestBuilder.sendRequest("", new RequestCallbackEx() {
-				private int read = 0;
-				
-				@Override
-				public void onResponseReceived(Request request, Response response) {
-					onResponseReceiving(request, response);
-					
-					request = null;
-					if (expectingDisconnection) {
-						listener.onDisconnected();
-					}
-					else {
-						listener.onError(new CometException("Unexpected disconnection"), false);
-					}
-				}
-				
-				@Override
-				public void onResponseReceiving(Request request, Response response) {
-					
-					int statusCode = response.getStatusCode();
-					String text = response.getText();
-					if (statusCode != Response.SC_OK) {
-						request.cancel();
-						expectingDisconnection = true;
-						listener.onError(new StatusCodeException(statusCode, text), false);
-					}
-					else {
-						List<Serializable> messages = new ArrayList<Serializable>();
-						int index = text.indexOf(SEPARATOR, read);
-						while (index > 0) {
-							parse(text.substring(read, index), messages);
-							read = index + SEPARATOR.length();
-							index = text.indexOf(SEPARATOR, read);
-						}
-						
-						if (!request.isPending()) {
-							if (read < text.length() - SEPARATOR.length()) {
-								parse(text.substring(read), messages);
-							}
-						}
-						
-						if (!messages.isEmpty()) {
-							listener.onMessage(messages);
-						}
-					}
-				}
-				
-				@Override
-				public void onError(Request request, Throwable exception) {
-					if (exception instanceof RequestTimeoutException) {
-						RequestTimeoutException rte = (RequestTimeoutException) exception;
-						exception = new CometTimeoutException(client.getUrl(), rte.getTimeoutMillis());
-					}
-					expectingDisconnection = request.isPending();
-					listener.onError(exception, request.isPending());
-				}
-			});
-		}
-		catch (RequestException e) {
-			listener.onError(e, false);
+		read = 0;
+		
+		xmlHttpRequest = createXMLHttpRequest();
+		String sendError = connect(xmlHttpRequest, client.getUrl(), this);
+		if (sendError != null) {
+			xmlHttpRequest = null;
+			listener.onError(new RequestException(sendError), false);
 		}
 	}
 	
+	private native JavaScriptObject createXMLHttpRequest() /*-{
+		return new XMLHttpRequest();
+	}-*/;
+	
+	private native String connect(JavaScriptObject xmlHttpRequest, String url, HTTPRequestCometTransport transport) /*-{
+		try {
+			xmlHttpRequest.open("GET", url, true);
+			xmlHttpRequest.setRequestHeader("Accept", "text/plain");
+			xmlHttpRequest.setRequestHeader("Cache-Control", "no-cache");
+			xmlHttpRequest.onreadystatechange = function() {
+				var readyState = xmlHttpRequest.readyState;
+				if (readyState == @com.google.gwt.http.client.XMLHTTPRequest::LOADED) {
+					xmlHttpRequest.onreadystatechange = null;
+					transport.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::onLoaded(ILjava/lang/String;)(xmlHttpRequest.status, xmlHttpRequest.responseText);
+				}
+				else if (readyState == @com.google.gwt.http.client.XMLHTTPRequest::RECEIVING) {
+					// IE does not support getting the response text so we check to make hosted mode debugging easier
+					if (typeof xmlHttpRequest.responseText != 'unknown') {
+						transport.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::onReceiving(ILjava/lang/String;)(xmlHttpRequest.status, xmlHttpRequest.responseText);
+					}
+				}
+			};
+			xmlHttpRequest.send();
+			return null;
+		}
+		catch (e) {
+			return e.message || e.toString();
+		}
+	}-*/;
+	
 	@Override
-	public void disconnect() {
-		if (request != null) {
-			request.cancel();
-			request = null;
+	public native void disconnect() /*-{
+		if (this.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::xmlHttpRequest != null) {
+			this.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::xmlHttpRequest.onreadystatechange = null;
+			this.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::xmlHttpRequest.abort();
+			this.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::xmlHttpRequest = null;
+		}
+	}-*/;
+	
+	@SuppressWarnings("unused")
+	private void onLoaded(int statusCode, String responseText) {
+		xmlHttpRequest = null;
+		onReceiving(statusCode, responseText);
+		
+		if (expectingDisconnection) {
+			listener.onDisconnected();
+		}
+		else {
+			listener.onError(new CometException("Unexpected disconnection"), false);
+		}
+	}
+	
+	private void onReceiving(int statusCode, String responseText) {
+		if (statusCode != Response.SC_OK) {
+			expectingDisconnection = true;
+			listener.onError(new StatusCodeException(statusCode, responseText), true);
+		}
+		else {
+			List<Serializable> messages = new ArrayList<Serializable>();
+			int index = responseText.indexOf(SEPARATOR, read);
+			while (index > 0) {
+				parse(responseText.substring(read, index), messages);
+				read = index + SEPARATOR.length();
+				index = responseText.indexOf(SEPARATOR, read);
+			}
+			
+			if (!messages.isEmpty()) {
+				listener.onMessage(messages);
+			}
 		}
 	}
 	
