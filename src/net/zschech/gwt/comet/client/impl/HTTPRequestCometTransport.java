@@ -19,10 +19,12 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.zschech.gwt.comet.client.CometClient;
 import net.zschech.gwt.comet.client.CometException;
 import net.zschech.gwt.comet.client.CometSerializer;
 
 import com.google.gwt.core.client.JavaScriptObject;
+import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.user.client.rpc.SerializationException;
@@ -37,8 +39,8 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  * Another issues is that the memory required for the XMLHTTPRequest's responseText constantly grows so the server
  * occasionally disconnects the client who then reestablishes the connection.
  * 
- * The protocol for this transport is a "\r\n" separated transport messages. The different types of transport message
- * are identified by the first character in the line as follows:
+ * The protocol for this transport is a '\n' separated transport messages. The different types of transport message are
+ * identified by the first character in the line as follows:
  * 
  * ! A connection message followed by the heartbeat duration as an integer
  * 
@@ -48,11 +50,13 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  * 
  * * A padding message to cause the browser to start processing the stream
  * 
- * ] A string message
+ * ] A string message that needs unescaping
+ * 
+ * | A string message that does not need unescaping
  * 
  * [ A GWT serialized object
  * 
- * string messages are escaped for '\\' '\r' and '\n' characters as "\r\n" is the message separator.
+ * string messages are escaped for '\\' and '\n' characters as '\n' is the message separator.
  * 
  * GWT serialized object messages are escaped by GWT so do not need to be escaped by the transport
  * 
@@ -60,7 +64,7 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  */
 public class HTTPRequestCometTransport extends CometTransport {
 	
-	private static final String SEPARATOR = "\r\n";
+	private static final String SEPARATOR = "\n";
 	private JavaScriptObject xmlHttpRequest;
 	private boolean expectingDisconnection;
 	private int read;
@@ -136,16 +140,18 @@ public class HTTPRequestCometTransport extends CometTransport {
 			listener.onError(new StatusCodeException(statusCode, responseText), true);
 		}
 		else {
-			List<Serializable> messages = new ArrayList<Serializable>();
-			int index = responseText.indexOf(SEPARATOR, read);
-			while (index > 0) {
-				parse(responseText.substring(read, index), messages);
-				read = index + SEPARATOR.length();
-				index = responseText.indexOf(SEPARATOR, read);
-			}
-			
-			if (!messages.isEmpty()) {
-				listener.onMessage(messages);
+			int index = responseText.lastIndexOf(SEPARATOR);
+			if (index > read) {
+				List<Serializable> messages = new ArrayList<Serializable>();
+				JsArrayString data = CometClient.split(responseText.substring(read, index), SEPARATOR);
+				int length = data.length();
+				for (int i = 0; i < length; i++) {
+					parse(data.get(i), messages);
+				}
+				read = index + 1;
+				if (!messages.isEmpty()) {
+					listener.onMessage(messages);
+				}
 			}
 		}
 	}
@@ -154,89 +160,58 @@ public class HTTPRequestCometTransport extends CometTransport {
 		if (expectingDisconnection) {
 			listener.onError(new CometException("Expecting disconnection but received message: " + message), true);
 		}
-		else if (message.startsWith("!")) {
-			String hertbeatParameter = message.substring(1);
-			try {
-				listener.onConnected(Integer.parseInt(hertbeatParameter));
-			}
-			catch (NumberFormatException e) {
-				listener.onError(new CometException("Unexpected heartbeat parameter: " + hertbeatParameter), true);
-			}
-		}
-		else if (message.startsWith("?")) {
-			// clean disconnection
-			expectingDisconnection = true;
-		}
-		else if (message.startsWith("#")) {
-			listener.onHeartbeat();
-		}
-		else if (message.startsWith("*")) {
-			// ignore padding
-		}
-		else if (message.startsWith("]")) {
-			try {
-				messages.add(unescape(message).substring(1));
-			}
-			catch (SerializationException e) {
-				listener.onError(e, true);
-			}
+		else if (message.isEmpty()) {
+			listener.onError(new CometException("Invalid empty message received"), true);
 		}
 		else {
-			CometSerializer serializer = client.getSerializer();
-			if (serializer == null) {
-				listener.onError(new SerializationException("Can not deserialize message with no serializer: " + message), true);
-			}
-			else {
+			char c = message.charAt(0);
+			switch (c) {
+			case '!':
+				String hertbeatParameter = message.substring(1);
 				try {
-					messages.add(serializer.parse(message));
+					listener.onConnected(Integer.parseInt(hertbeatParameter));
 				}
-				catch (SerializationException e) {
-					listener.onError(e, true);
+				catch (NumberFormatException e) {
+					listener.onError(new CometException("Unexpected heartbeat parameter: " + hertbeatParameter), true);
 				}
+				break;
+			case '?':
+				// clean disconnection
+				expectingDisconnection = true;
+				break;
+			case '#':
+				listener.onHeartbeat();
+				break;
+			case '*':
+				// ignore padding
+				break;
+			case '|':
+				messages.add(message.substring(1));
+				break;
+			case ']':
+				messages.add(unescape(message.substring(1)));
+				break;
+			case '[':
+				CometSerializer serializer = client.getSerializer();
+				if (serializer == null) {
+					listener.onError(new SerializationException("Can not deserialize message with no serializer: " + message), true);
+				}
+				else {
+					try {
+						messages.add(serializer.parse(message));
+					}
+					catch (SerializationException e) {
+						listener.onError(e, true);
+					}
+				}
+				break;
+			default:
+				listener.onError(new CometException("Invalid message received: " + message), true);
 			}
 		}
 	}
 	
-	static String unescape(String string) throws SerializationException {
-		int index = string.indexOf('\\');
-		if (index == -1) {
-			return string;
-		}
-		
-		// TODO this unescaping code is probably not that efficient when converted to
-		// java script
-		StringBuilder str = new StringBuilder(string.length());
-		str.append(string.substring(0, index));
-		
-		int length = string.length();
-		char c;
-		for (int i = index; i < length; i++) {
-			c = string.charAt(i);
-			switch (c) {
-			case '\\':
-				i++;
-				if (i >= length) {
-					throw new SerializationException("Invalid escape sequence at: " + i + " in:" + string);
-				}
-				c = string.charAt(i);
-				switch (c) {
-				case '\\':
-					str.append(c);
-					break;
-				case 'r':
-					str.append('\r');
-					break;
-				case 'n':
-					str.append('\n');
-					break;
-				default:
-					throw new SerializationException("Invalid escape sequence: " + c + " at: " + i + " in:" + string);
-				}
-				break;
-			default:
-				str.append(c);
-			}
-		}
-		return str.toString();
+	static String unescape(String string) {
+		return string.replace("\\n", "\n").replace("\\\\", "\\");
 	}
 }

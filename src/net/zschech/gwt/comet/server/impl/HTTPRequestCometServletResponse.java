@@ -38,15 +38,15 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	private static final String PADDING_STRING;
 	static {
 		char[] padding = new char[MAX_PADDING_REQUIRED];
-		for (int i = 0; i < padding.length - 2; i++) {
+		for (int i = 0; i < padding.length - 1; i++) {
 			padding[i] = '*';
 		}
-		padding[padding.length - 2] = '\r';
 		padding[padding.length - 1] = '\n';
 		PADDING_STRING = new String(padding);
 	}
 	
 	private final boolean chrome;
+	private int clientMemory;
 	
 	public HTTPRequestCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, CometServlet servlet, AsyncServlet async, int heartbeat) {
 		super(request, response, serializationPolicy, servlet, async, heartbeat);
@@ -62,7 +62,7 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 		super.initiate();
 		
 		// send connection event to client
-		writer.append('!').append(String.valueOf(getHeartbeat())).append("\r\n");
+		writer.append('!').append(String.valueOf(getHeartbeat())).append('\n');
 	}
 	
 	@Override
@@ -75,7 +75,7 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 				for (int i = written; i < padding - 2; i++) {
 					result.append('*');
 				}
-				result.append("\r\n");
+				result.append('\n');
 				return result;
 			}
 			else {
@@ -115,41 +115,48 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	
 	@Override
 	protected void doWrite(List<? extends Serializable> messages) throws IOException {
+		clientMemory *= 2;
 		for (Serializable message : messages) {
 			CharSequence string;
 			if (message instanceof CharSequence) {
 				string = escape((CharSequence) message);
-				writer.append(']');
+				if (string == message) {
+					writer.append('|');
+				}
+				else {
+					writer.append(']');
+				}
 			}
 			else {
 				string = serialize(message);
 			}
 			
-			writer.append(string).append("\r\n");
+			writer.append(string).append('\n');
+			clientMemory += string.length() + 1;
 		}
 	}
 	
 	@Override
 	protected boolean isOverMaxLength(int written) {
-		if (chrome) {
-			// Chrome seems to have a problem with lots of small messages consuming lots of memory.
-			// I'm guessing for each readyState = 3 event it copies the responseText from its IO system to its JavaScript
-			// engine and does not clean up all the events until the HTTP request is finished.
-			return written > 1024;
-		}
-		else {
-			return written > 2 * 1024 * 1024;
-		}
+//		 if (chrome) {
+//		 Chrome seems to have a problem with lots of small messages consuming lots of memory.
+//		 I'm guessing for each readyState = 3 event it copies the responseText from its IO system to its JavaScript
+//		 engine and does not clean up all the events until the HTTP request is finished.
+		 return clientMemory > 1024 * 1024;
+//		 }
+//		 else {
+//		return false;//written > 2 * 1024 * 1024;
+//		 }
 	}
 	
 	@Override
 	protected void doHeartbeat() throws IOException {
-		writer.append("#\r\n");
+		writer.append("#\n");
 	}
 	
 	@Override
 	protected void doTerminate() throws IOException {
-		writer.append("?\r\n");
+		writer.append("?\n");
 	}
 	
 	static CharSequence escape(CharSequence string) {
@@ -160,7 +167,6 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 			switch (ch) {
 			case '\\':
 			case '\n':
-			case '\r':
 				break loop;
 			}
 			i++;
@@ -179,9 +185,6 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 				break;
 			case '\n':
 				str.append("\\n");
-				break;
-			case '\r':
-				str.append("\\r");
 				break;
 			default:
 				str.append(ch);

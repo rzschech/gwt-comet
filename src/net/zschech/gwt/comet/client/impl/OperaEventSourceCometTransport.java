@@ -86,12 +86,7 @@ public class OperaEventSourceCometTransport extends CometTransport {
 	
 	@SuppressWarnings("unused")
 	private void onString(String message) {
-		try {
-			listener.onMessage(Collections.singletonList(HTTPRequestCometTransport.unescape(message)));
-		}
-		catch (SerializationException e) {
-			listener.onError(e, true);
-		}
+		listener.onMessage(Collections.singletonList(HTTPRequestCometTransport.unescape(message)));
 	}
 	
 	@SuppressWarnings("unused")
@@ -102,7 +97,7 @@ public class OperaEventSourceCometTransport extends CometTransport {
 		}
 		else {
 			try {
-				listener.onMessage(Collections.singletonList(serializer.parse(HTTPRequestCometTransport.unescape(message))));
+				listener.onMessage(Collections.singletonList(serializer.parse(message)));
 			}
 			catch (SerializationException e) {
 				listener.onError(e, true);
@@ -140,9 +135,6 @@ public class OperaEventSourceCometTransport extends CometTransport {
 			}
 			catch (NumberFormatException e) {
 				listener.onError(new CometException("Unexpected status code: " + status), false);
-			}
-			catch (SerializationException e) {
-				listener.onError(e, false);
 			}
 		}
 		else if (message.equals("d")) {

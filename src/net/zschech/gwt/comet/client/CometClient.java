@@ -22,6 +22,7 @@ import net.zschech.gwt.comet.client.impl.CometTransport;
 
 import com.google.gwt.core.client.Duration;
 import com.google.gwt.core.client.GWT;
+import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.core.client.GWT.UncaughtExceptionHandler;
 import com.google.gwt.user.client.Timer;
 
@@ -300,6 +301,10 @@ public class CometClient {
 			doOnMessage(messages);
 		}
 	}
+
+	public native static JsArrayString split(String string, String separator) /*-{
+		return string.split(separator);
+	}-*/;
 	
 	/*
 	 * @Override public void start() { if (!closing) { Window.addWindowCloseListener(windowListener); super.start(); } }
