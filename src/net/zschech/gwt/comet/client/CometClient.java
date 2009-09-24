@@ -95,6 +95,14 @@ public class CometClient {
 		return connectionTimeout;
 	}
 	
+	public void setReconnectionTimout(int reconnectionTimout) {
+		this.reconnectionTimout = reconnectionTimout;
+	}
+	
+	public int getReconnectionTimout() {
+		return reconnectionTimout;
+	}
+	
 	public boolean isRunning() {
 		return running;
 	}

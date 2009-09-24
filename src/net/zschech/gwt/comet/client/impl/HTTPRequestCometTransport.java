@@ -104,7 +104,7 @@ public class HTTPRequestCometTransport extends CometTransport {
 					}
 				}
 			};
-			xmlHttpRequest.send();
+			xmlHttpRequest.send(null);
 			return null;
 		}
 		catch (e) {
@@ -124,7 +124,7 @@ public class HTTPRequestCometTransport extends CometTransport {
 	@SuppressWarnings("unused")
 	private void onLoaded(int statusCode, String responseText) {
 		xmlHttpRequest = null;
-		onReceiving(statusCode, responseText);
+		onReceiving(statusCode, responseText, false);
 		
 		if (expectingDisconnection) {
 			listener.onDisconnected();
@@ -134,10 +134,15 @@ public class HTTPRequestCometTransport extends CometTransport {
 		}
 	}
 	
+	@SuppressWarnings("unused")
 	private void onReceiving(int statusCode, String responseText) {
+		onReceiving(statusCode, responseText, true);
+	}
+	
+	private void onReceiving(int statusCode, String responseText, boolean connected) {
 		if (statusCode != Response.SC_OK) {
 			expectingDisconnection = true;
-			listener.onError(new StatusCodeException(statusCode, responseText), true);
+			listener.onError(new StatusCodeException(statusCode, responseText), connected);
 		}
 		else {
 			int index = responseText.lastIndexOf(SEPARATOR);
