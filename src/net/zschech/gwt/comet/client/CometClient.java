@@ -149,7 +149,7 @@ public class CometClient {
 			public void run() {
 				double currentTimeMillis = Duration.currentTimeMillis();
 				double difference = currentTimeMillis - lastReceivedTime;
-				if (difference > heartbeatTimeout) {
+				if (difference >= heartbeatTimeout) {
 					doDisconnect();
 					doOnError(new CometException("Heartbeat failed"), false);
 				}
