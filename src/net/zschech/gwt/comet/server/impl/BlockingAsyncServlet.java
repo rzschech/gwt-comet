@@ -25,14 +25,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpSession;
 
 /**
- * This AsyncServlet implementation blocks the http request processing thread. It does not generate notifications for
- * client disconnection :-(
+ * This AsyncServlet implementation blocks the http request processing thread.
+ *
+ * It does not generate notifications for client disconnection and therefor must wait for a heartbeat send attempt
+ * to detect client disconnection :-(
  * 
  * @author Richard Zschech
  */
@@ -41,6 +43,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	private ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 	
 	public static String BATCH_SIZE = "net.zschech.gwt.comet.server.batch.size";
+	public static String COMET_RESPONSE_SESSION_KEY = "net.zschech.gwt.comet.server.CometResponse";
 	
 	private int batchSize = 10;
 	
@@ -62,7 +65,30 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	}
 	
 	@Override
-	public AtomicReference<Thread> suspend(CometServletResponseImpl response, CometSessionImpl session) throws IOException {
+	public void initiateResponse(CometServletResponseImpl response, CometSessionImpl session) throws IOException {
+		// see if there is a response already associated with this session and terminate it
+		if (session != null) {
+			synchronized (session) {
+				HttpSession httpSession = session.getHttpSession();
+				CometServletResponseImpl prevResponse = (CometServletResponseImpl) httpSession.getAttribute(COMET_RESPONSE_SESSION_KEY);
+				if (prevResponse != null) {
+					prevResponse.terminate();
+				}
+				httpSession.setAttribute(COMET_RESPONSE_SESSION_KEY, response);
+			}
+		}
+	}
+	
+	@Override
+	public void initiateSession(CometServletResponseImpl response, CometSessionImpl session) {
+		synchronized (session) {
+			HttpSession httpSession = session.getHttpSession();
+			httpSession.setAttribute(COMET_RESPONSE_SESSION_KEY, response);
+		}
+	}
+	
+	@Override
+	public Object suspend(CometServletResponseImpl response, CometSessionImpl session) throws IOException {
 		if (session == null) {
 			while (!response.isTerminated()) {
 				try {

@@ -103,7 +103,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	@Override
 	public CometSession getSession(boolean create) {
 		if (suspended) {
-			throw new IllegalStateException("HttpServletRequest can not be accessed after the CometServletResponse has been suspended.");
+			throw new IllegalStateException("CometSession can not be accessed after the CometServletResponse has been suspended.");
 		}
 		if (session != null) {
 			return session;
@@ -114,6 +114,9 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 		
 		session = (CometSessionImpl) CometServlet.getCometSession(httpSession, create, create ? new ConcurrentLinkedQueue<Serializable>() : null);
+		if (create) {
+			async.initiateSession(this, session);
+		}
 		return session;
 	}
 	
@@ -135,7 +138,8 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	public void initiate() throws IOException {
-		async.initiate(this);
+		getSession(false);
+		async.initiateResponse(this, session);
 		
 		response.setHeader("Cache-Control", "no-cache");
 		response.setCharacterEncoding("UTF-8");
@@ -161,7 +165,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	
 	public void suspend() throws IOException {
 		flush();
-		getSession(false);
 		
 		suspended = true;
 		suspendInfo = async.suspend(this, session);

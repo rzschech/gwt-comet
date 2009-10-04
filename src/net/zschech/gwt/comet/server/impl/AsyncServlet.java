@@ -23,17 +23,13 @@ import javax.servlet.ServletException;
 
 public abstract class AsyncServlet {
 	
-	/**
-	 * @param context
-	 * @throws ServletException
-	 */
 	public void init(ServletContext context) throws ServletException {
 	}
 	
-	/**
-	 * @param response
-	 */
-	public void initiate(CometServletResponseImpl response) {
+	public void initiateResponse(CometServletResponseImpl response, CometSessionImpl session) throws IOException {
+	}
+	
+	public void initiateSession(CometServletResponseImpl response, CometSessionImpl session) {
 	}
 	
 	public abstract Object suspend(CometServletResponseImpl response, CometSessionImpl session) throws IOException;

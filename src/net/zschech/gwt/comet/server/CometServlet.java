@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
