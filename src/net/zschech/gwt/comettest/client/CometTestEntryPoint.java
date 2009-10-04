@@ -104,6 +104,13 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 		}));
 		
+		RootPanel.get().add(new Button("Error", new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				errorTest();
+			}
+		}));
+		
 		log = new HTML();
 		RootPanel.get().add(log);
 	}
@@ -191,7 +198,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			
 			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(exception.toString());
+				log(connected + " " + exception.toString());
 				stop();
 			}
 		});
@@ -241,7 +248,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			
 			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(exception.toString());
+				log(connected + " " + exception.toString());
 				stop();
 			}
 		});
@@ -283,7 +290,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			
 			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(exception.toString());
+				log(connected + " " + exception.toString());
 //				stop();
 			}
 		});
@@ -395,7 +402,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			
 			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(exception.toString());
+				log(connected + " " + exception.toString());
 				stop();
 			}
 		});
@@ -461,8 +468,48 @@ public class CometTestEntryPoint implements EntryPoint {
 			
 			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(exception.toString());
+				log(connected + " " + exception.toString());
 				stop();
+			}
+		});
+	}
+
+	public void errorTest() {
+		final CometSerializer serializer = GWT.create(TestCometSerializer.class);
+		
+		start(GWT.getModuleBaseURL() + "error", serializer, new CometListener() {
+			double start = Duration.currentTimeMillis();
+			double connected;
+			double disconnected;
+			int count;
+			
+			@Override
+			public void onMessage(List<? extends Serializable> messages) {
+			}
+			
+			@Override
+			public void onConnected(int hearbeat) {
+				connected = Duration.currentTimeMillis();
+				log("Connected " + (connected - start) + "ms heartbeat: " + hearbeat);
+			}
+			
+			@Override
+			public void onDisconnected() {
+				disconnected = Duration.currentTimeMillis();
+				log("Disconnected " + (disconnected - connected) + "ms");
+				log("Count " + count);
+				log("Rate " + count / (disconnected - connected) * 1000 + "/s");
+//				stop();
+			}
+			
+			@Override
+			public void onHeartbeat() {
+			}
+			
+			@Override
+			public void onError(Throwable exception, boolean connected) {
+				log(connected + " " + exception.toString());
+//				stop();
 			}
 		});
 	}

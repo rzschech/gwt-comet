@@ -22,6 +22,10 @@
 		<servlet-name>serializeServlet</servlet-name>
 		<servlet-class>net.zschech.gwt.comettest.server.SerializeTestServlet</servlet-class>
 	</servlet>
+	<servlet>
+		<servlet-name>errorServlet</servlet-name>
+		<servlet-class>net.zschech.gwt.comettest.server.ErrorTestServlet</servlet-class>
+	</servlet>
 	
 	<servlet-mapping>
 		<servlet-name>throughputServlet</servlet-name>
@@ -43,7 +47,11 @@
 		<servlet-name>serializeServlet</servlet-name>
 		<url-pattern>/net.zschech.gwt.comettest.CometTest/serialize</url-pattern>
 	</servlet-mapping>
-
+	<servlet-mapping>
+		<servlet-name>errorServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/error</url-pattern>
+	</servlet-mapping>
+	
  	<!-- Default page to serve -->
 	<welcome-file-list>
 		<welcome-file>CometTest.html</welcome-file>

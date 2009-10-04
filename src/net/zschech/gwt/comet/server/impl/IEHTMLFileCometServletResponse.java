@@ -95,7 +95,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 		getResponse().setContentType("text/html");
 		writer.append("<html><script>parent.e(").append(Integer.toString(statusCode));
 		if (message != null) {
-			writer.append(' ').append(escapeString(message));
+			writer.append(",\'").append(escapeString(message)).append('\'');
 		}
 		writer.append(")</script></html>");
 	}

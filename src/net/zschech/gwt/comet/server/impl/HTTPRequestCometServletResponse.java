@@ -107,10 +107,9 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	@Override
 	protected void doSendError(int statusCode, String message) throws IOException {
 		getResponse().setStatus(statusCode);
-		if (message == null) {
-			message = String.valueOf(statusCode);
+		if (message != null) {
+			writer.append(message);
 		}
-		writer.append(message);
 	}
 	
 	@Override

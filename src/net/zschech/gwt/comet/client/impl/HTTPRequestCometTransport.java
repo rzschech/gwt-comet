@@ -125,13 +125,6 @@ public class HTTPRequestCometTransport extends CometTransport {
 	private void onLoaded(int statusCode, String responseText) {
 		xmlHttpRequest = null;
 		onReceiving(statusCode, responseText, false);
-		
-		if (expectingDisconnection) {
-			listener.onDisconnected();
-		}
-		else {
-			listener.onError(new CometException("Unexpected disconnection"), false);
-		}
 	}
 	
 	@SuppressWarnings("unused")
@@ -141,8 +134,10 @@ public class HTTPRequestCometTransport extends CometTransport {
 	
 	private void onReceiving(int statusCode, String responseText, boolean connected) {
 		if (statusCode != Response.SC_OK) {
-			expectingDisconnection = true;
-			listener.onError(new StatusCodeException(statusCode, responseText), connected);
+			if (!connected) {
+				expectingDisconnection = true;
+				listener.onError(new StatusCodeException(statusCode, responseText), connected);
+			}
 		}
 		else {
 			int index = responseText.lastIndexOf(SEPARATOR);
@@ -156,6 +151,15 @@ public class HTTPRequestCometTransport extends CometTransport {
 				read = index + 1;
 				if (!messages.isEmpty()) {
 					listener.onMessage(messages);
+				}
+			}
+			
+			if (!connected) {
+				if (expectingDisconnection) {
+					listener.onDisconnected();
+				}
+				else {
+					listener.onError(new CometException("Unexpected disconnection"), false);
 				}
 			}
 		}
