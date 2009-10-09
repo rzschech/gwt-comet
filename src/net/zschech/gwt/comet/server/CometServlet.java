@@ -200,14 +200,15 @@ public abstract class CometServlet extends HttpServlet {
 	}
 	
 	public static CometSession getCometSession(HttpSession httpSession, boolean create, Queue<Serializable> queue) {
-		CometSessionImpl session = (CometSessionImpl) httpSession.getAttribute(CometSession.HTTP_SESSION_KEY);
-		if (session == null) {
-			if (create) {
-				session = new CometSessionImpl(httpSession, queue, AsyncServlet.create(httpSession.getServletContext()));
-				httpSession.setAttribute(CometSession.HTTP_SESSION_KEY, session);
+		synchronized (httpSession) {
+			CometSessionImpl session = (CometSessionImpl) httpSession.getAttribute(CometSession.HTTP_SESSION_KEY);
+			if (session == null) {
+				if (create) {
+					session = new CometSessionImpl(httpSession, queue, AsyncServlet.create(httpSession.getServletContext()));
+					httpSession.setAttribute(CometSession.HTTP_SESSION_KEY, session);
+				}
 			}
+			return session;
 		}
-		
-		return session;
 	}
 }

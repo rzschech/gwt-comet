@@ -141,31 +141,6 @@ public class CometTestEntryPoint implements EntryPoint {
 		final int c = 1000;
 		final int b = 10;
 		
-		CometListener listener = new CometListener() {
-			@Override
-			public void onConnected(int heartbeat) {
-			}
-
-			@Override
-			public void onDisconnected() {
-			}
-
-			@Override
-			public void onError(Throwable exception, boolean connected) {
-			}
-
-			@Override
-			public void onHeartbeat() {
-			}
-
-			@Override
-			public void onMessage(List<? extends Serializable> messages) {
-				for (Serializable message : messages) {
-					// process your message
-				}
-			}
-		};
-		
 		start(GWT.getModuleBaseURL() + "throughput?count=" + c + "&batch=" + b, new CometListener() {
 			double start = Duration.currentTimeMillis();
 			double connected;

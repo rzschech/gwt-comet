@@ -115,7 +115,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		
 		session = (CometSessionImpl) CometServlet.getCometSession(httpSession, create, create ? new ConcurrentLinkedQueue<Serializable>() : null);
 		if (create) {
-			async.initiateSession(this, session);
+			session.setResponse(this);
 		}
 		return session;
 	}
@@ -139,7 +139,12 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	
 	public void initiate() throws IOException {
 		getSession(false);
-		async.initiateResponse(this, session);
+		if (session != null) {
+			CometServletResponseImpl prevResponse = session.setResponse(this);
+			if (prevResponse != null) {
+				prevResponse.terminate();
+			}
+		}
 		
 		response.setHeader("Cache-Control", "no-cache");
 		response.setCharacterEncoding("UTF-8");
@@ -312,6 +317,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			catch (IOException e) {
 				servlet.log("Error closing connection", e);
 			}
+		}
+		
+		if (session != null) {
+			session.clearResponse(this);
 		}
 		
 		if (suspended) {

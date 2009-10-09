@@ -17,7 +17,9 @@ package net.zschech.gwt.comet.server.impl;
 
 import java.io.Serializable;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicReference;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpSession;
 
 import net.zschech.gwt.comet.server.CometSession;
@@ -27,12 +29,14 @@ public class CometSessionImpl implements CometSession {
 	private final HttpSession httpSession;
 	private final Queue<Serializable> queue;
 	private final AsyncServlet async;
+	private final AtomicReference<CometServletResponseImpl> response;
 	private volatile boolean valid;
 	
 	public CometSessionImpl(HttpSession httpSession, Queue<Serializable> queue, AsyncServlet async) {
 		this.httpSession = httpSession;
 		this.queue = queue;
 		this.async = async;
+		this.response = new AtomicReference<CometServletResponseImpl>();
 		this.valid = true;
 	}
 	
@@ -56,7 +60,12 @@ public class CometSessionImpl implements CometSession {
 	public void invalidate() {
 		valid = false;
 		async.invalidate(this);
-		httpSession.removeAttribute(HTTP_SESSION_KEY);
+		try {
+			httpSession.removeAttribute(HTTP_SESSION_KEY);
+		}
+		catch (IllegalStateException e) {
+			// HttpSession already invalidated
+		}
 	}
 	
 	@Override
@@ -67,5 +76,17 @@ public class CometSessionImpl implements CometSession {
 	@Override
 	public HttpSession getHttpSession() {
 		return httpSession;
+	}
+	
+	public CometServletResponseImpl setResponse(CometServletResponseImpl response) {
+		return this.response.getAndSet(response);
+	}
+	
+	public boolean clearResponse(CometServletResponseImpl response) {
+		return this.response.compareAndSet(response, null);
+	}
+	
+	public CometServletResponseImpl getResponse() {
+		return response.get();
 	}
 }

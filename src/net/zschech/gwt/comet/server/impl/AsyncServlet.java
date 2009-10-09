@@ -26,12 +26,6 @@ public abstract class AsyncServlet {
 	public void init(ServletContext context) throws ServletException {
 	}
 	
-	public void initiateResponse(CometServletResponseImpl response, CometSessionImpl session) throws IOException {
-	}
-	
-	public void initiateSession(CometServletResponseImpl response, CometSessionImpl session) {
-	}
-	
 	public abstract Object suspend(CometServletResponseImpl response, CometSessionImpl session) throws IOException;
 	
 	public abstract void terminate(CometServletResponseImpl response, CometSessionImpl session, Object suspendInfo);
