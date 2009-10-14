@@ -22,7 +22,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.io.Writer;
-import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -53,11 +52,12 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	private Flushable flushable;
 	protected Writer writer;
 	
-	private volatile boolean terminated;
-	private volatile boolean suspended;
+	private boolean terminated;
+	private boolean suspended;
 	
 	private Object suspendInfo;
 	private ScheduledFuture<?> heartbeatFuture;
+	private ScheduledFuture<?> sessionKeepAliveFuture;
 	
 	protected CometServletResponseImpl(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, CometServlet servlet, AsyncServlet async, int heartbeat) {
 		this.request = request;
@@ -74,7 +74,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	@Override
-	public boolean isTerminated() {
+	public synchronized boolean isTerminated() {
 		return terminated;
 	}
 	
@@ -83,7 +83,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	@Override
-	public HttpServletRequest getRequest() {
+	public synchronized HttpServletRequest getRequest() {
 		if (suspended) {
 			throw new IllegalStateException("HttpServletRequest can not be accessed after the CometServletResponse has been suspended.");
 		}
@@ -101,7 +101,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	@Override
-	public CometSession getSession(boolean create) {
+	public synchronized CometSession getSession(boolean create) {
 		if (suspended) {
 			throw new IllegalStateException("CometSession can not be accessed after the CometServletResponse has been suspended.");
 		}
@@ -115,9 +115,25 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		
 		session = (CometSessionImpl) CometServlet.getCometSession(httpSession, create, create ? new ConcurrentLinkedQueue<Serializable>() : null);
 		if (create) {
+			scheduleSessionKeepAlive();
 			session.setResponse(this);
 		}
 		return session;
+	}
+	
+	public synchronized void scheduleSessionKeepAlive() {
+		if (sessionKeepAliveFuture != null) {
+			sessionKeepAliveFuture.cancel(false);
+		}
+		sessionKeepAliveFuture = async.scheduleSessionKeepAlive(this, session);
+	}
+
+	private void scheduleHeartbeat() {
+		assert Thread.holdsLock(this);
+		if (heartbeatFuture != null) {
+			heartbeatFuture.cancel(false);
+		}
+		heartbeatFuture = async.scheduleHeartbeat(this, session);
 	}
 	
 	public void sendError(int statusCode) throws IOException {
@@ -125,7 +141,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	@Override
-	public void sendError(int statusCode, String message) throws IOException {
+	public synchronized void sendError(int statusCode, String message) throws IOException {
+		if (suspended) {
+			throw new IllegalStateException("sendError can not be accessed after the CometServletResponse has been suspended.");
+		}
 		getResponse().reset();
 		response.setHeader("Cache-Control", "no-cache");
 		response.setCharacterEncoding("UTF-8");
@@ -137,25 +156,13 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		setTerminated(true);
 	}
 	
-	public void initiate() throws IOException {
-		getSession(false);
-		if (session != null) {
-			CometServletResponseImpl prevResponse = session.setResponse(this);
-			if (prevResponse != null) {
-				prevResponse.terminate();
-			}
-		}
-		
+	public synchronized void initiate() throws IOException {
 		response.setHeader("Cache-Control", "no-cache");
 		response.setCharacterEncoding("UTF-8");
 		
 		OutputStream outputStream = response.getOutputStream();
-		// A hack to get SSL AppOutputStream to flush the underlying socket. The property path below only works on
-		// Jetty.
-		// Need to extend this to support more servers and work in secure environments
-		// if (request.getScheme().equals("https")) {
-		// flushable = (Flushable) get("_generator._endp._socket.sockOutput", outputStream);
-		// }
+		flushable = async.getFlushable(this);
+		
 		String acceptEncoding = request.getHeader("Accept-Encoding");
 		if (acceptEncoding != null && acceptEncoding.contains("deflate")) {
 			response.setHeader("Content-Encoding", "deflate");
@@ -165,24 +172,46 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		outputStream = getOutputStream(outputStream);
 		writer = new OutputStreamWriter(outputStream, "UTF-8");
 		
-		startHeartbeatTimer();
+		getSession(false);
+		scheduleHeartbeat();
+		if (session != null) {
+			scheduleSessionKeepAlive();
+			
+			// This must be as the last step of initialise because after this
+			// response is set in the session
+			// it must be fully setup as it can be immediately terminated by the
+			// next response
+			CometServletResponseImpl prevResponse = session.setResponse(this);
+			if (prevResponse != null) {
+				prevResponse.terminate();
+			}
+		}
 	}
 	
 	public void suspend() throws IOException {
-		flush();
+		CometSessionImpl s;
+		synchronized (this) {
+			if (terminated) {
+				return;
+			}
+			
+			flush();
+			suspended = true;
+			s = session;
+			
+			// Don't hold onto the request while suspended as it takes up
+			// memory.
+			// Also Jetty and possibly other web servers reuse the
+			// HttpServletRequests so we can't assume
+			// they are still valid after they have been suspended
+			request = null;
+		}
 		
-		suspended = true;
-		suspendInfo = async.suspend(this, session);
-		
-		// Don't hold onto the request while suspended as it takes up memory.
-		// Also Jetty and possibly other web servers reuse the
-		// HttpServletRequests so we can't assume
-		// they are still valid after they have been suspended
-		request = null;
+		suspendInfo = async.suspend(this, s);
 	}
 	
-	public void setSuspendInfo(Object suspendInfo) {
-		this.suspendInfo = suspendInfo;
+	public Object getSuspendInfo() {
+		return suspendInfo;
 	}
 	
 	@Override
@@ -191,6 +220,15 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			doTerminate();
 			flush();
 			setTerminated(true);
+		}
+	}
+	
+	void tryTerminate() {
+		try {
+			terminate();
+		}
+		catch (IOException e) {
+			servlet.log("Error terminating response", e);
 		}
 	}
 	
@@ -216,7 +254,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			if (flush) {
 				flush();
 			}
-			startHeartbeatTimer();
+			scheduleHeartbeat();
 		}
 		catch (IOException e) {
 			servlet.log("Error writing data", e);
@@ -231,51 +269,12 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			try {
 				doHeartbeat();
 				flush();
-				startHeartbeatTimer();
+				scheduleHeartbeat();
 			}
 			catch (IOException e) {
 				setTerminated(false);
 				throw e;
 			}
-		}
-	}
-	
-	private void flush() throws IOException {
-		writer.flush();
-		if (flushable != null) {
-			flushable.flush();
-		}
-	}
-	
-	private static boolean logged = false;
-	
-	private Object get(String path, Object object) {
-		try {
-			for (String property : path.split("\\.")) {
-				Class<?> c = object.getClass();
-				while (true) {
-					try {
-						Field field = c.getDeclaredField(property);
-						field.setAccessible(true);
-						object = field.get(object);
-						break;
-					}
-					catch (NoSuchFieldException e) {
-						c = c.getSuperclass();
-						if (c == null) {
-							throw e;
-						}
-					}
-				}
-			}
-			return object;
-		}
-		catch (Exception e) {
-			if (!logged) {
-				servlet.log("Error accessing underlying socket output stream to improve flushing", e);
-				logged = true;
-			}
-			return null;
 		}
 	}
 	
@@ -288,22 +287,17 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 	}
 	
-	private void startHeartbeatTimer() {
-		if (heartbeatFuture != null) {
-			heartbeatFuture.cancel(false);
+	private void flush() throws IOException {
+		assert Thread.holdsLock(this);
+		writer.flush();
+		if (flushable != null) {
+			flushable.flush();
 		}
-		heartbeatFuture = async.scheduleHeartbeat(this);
 	}
 	
-	protected abstract void doSendError(int statusCode, String message) throws IOException;
-	
-	protected abstract void doWrite(List<? extends Serializable> messages) throws IOException;
-	
-	protected abstract void doHeartbeat() throws IOException;
-	
-	protected abstract void doTerminate() throws IOException;
-	
 	protected void setTerminated(boolean serverInitiated) {
+		assert Thread.holdsLock(this);
+		
 		terminated = true;
 		if (heartbeatFuture != null) {
 			heartbeatFuture.cancel(false);
@@ -321,6 +315,9 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		
 		if (session != null) {
 			session.clearResponse(this);
+			if (sessionKeepAliveFuture != null) {
+				sessionKeepAliveFuture.cancel(false);
+			}
 		}
 		
 		if (suspended) {
@@ -329,6 +326,14 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		
 		servlet.cometTerminated(this, serverInitiated);
 	}
+	
+	protected abstract void doSendError(int statusCode, String message) throws IOException;
+	
+	protected abstract void doWrite(List<? extends Serializable> messages) throws IOException;
+	
+	protected abstract void doHeartbeat() throws IOException;
+	
+	protected abstract void doTerminate() throws IOException;
 	
 	protected String serialize(Serializable message) throws NotSerializableException {
 		try {

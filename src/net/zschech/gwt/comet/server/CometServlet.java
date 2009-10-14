@@ -94,25 +94,29 @@ public abstract class CometServlet extends HttpServlet {
 		String accept = request.getHeader("Accept");
 		String userAgent = request.getHeader("User-Agent");
 		SerializationPolicy serializationPolicy = createSerializationPolicy();
+		CometServletResponseImpl cometServletResponse;
 		if ("text/plain".equals(accept)) {
-			doCometImpl(new HTTPRequestCometServletResponse(request, response, serializationPolicy, this, async, requestHeartbeat));
+			cometServletResponse = new HTTPRequestCometServletResponse(request, response, serializationPolicy, this, async, requestHeartbeat);
 		}
 		else if (userAgent != null && userAgent.contains("Opera")) {
-			doCometImpl(new OperaEventSourceCometServletResponse(request, response, serializationPolicy, this, async, requestHeartbeat));
+			cometServletResponse = new OperaEventSourceCometServletResponse(request, response, serializationPolicy, this, async, requestHeartbeat);
 		}
 		else {
-			doCometImpl(new IEHTMLFileCometServletResponse(request, response, serializationPolicy, this, async, requestHeartbeat));
+			cometServletResponse = new IEHTMLFileCometServletResponse(request, response, serializationPolicy, this, async, requestHeartbeat);
 		}
+		doCometImpl(cometServletResponse);
 	}
 	
 	private void doCometImpl(CometServletResponseImpl response) throws ServletException, IOException {
-		
+		// setup the request
 		response.initiate();
 		
+		// call the application code
 		doComet(response);
-		if (!response.isTerminated()) {
-			response.suspend();
-		}
+		
+		// at this point the application may have spawned threads to process this response
+		// so we have to be careful about concurrency from here on
+		response.suspend();
 	}
 	
 	/**
@@ -136,7 +140,6 @@ public abstract class CometServlet extends HttpServlet {
 	 * @param serverInitiated
 	 */
 	public void cometTerminated(CometServletResponse cometResponse, boolean serverInitiated) {
-		
 	}
 	
 	/**

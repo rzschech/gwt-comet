@@ -31,7 +31,7 @@ import javax.servlet.ServletException;
 
 /**
  * This AsyncServlet implementation blocks the http request processing thread.
- *
+ * 
  * It does not generate notifications for client disconnection and therefor must wait for a heartbeat send attempt
  * to detect client disconnection :-(
  * 
@@ -39,6 +39,8 @@ import javax.servlet.ServletException;
  */
 public class BlockingAsyncServlet extends AsyncServlet {
 	
+	// private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
+
 	private ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 	
 	public static String BATCH_SIZE = "net.zschech.gwt.comet.server.batch.size";
@@ -64,24 +66,28 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	
 	@Override
 	public Object suspend(CometServletResponseImpl response, CometSessionImpl session) throws IOException {
+		assert !Thread.holdsLock(response);
+		
 		if (session == null) {
-			while (!response.isTerminated()) {
-				try {
-					synchronized (response) {
+			try {
+				synchronized (response) {
+					while (!response.isTerminated()) {
 						response.wait();
 					}
 				}
-				catch (InterruptedException e) {
-					response.terminate();
-					throw new InterruptedIOException(e.getMessage());
-				}
+			}
+			catch (InterruptedException e) {
+				response.terminate();
+				throw new InterruptedIOException(e.getMessage());
 			}
 		}
 		else {
+			assert !Thread.holdsLock(session);
+			
 			Queue<? extends Serializable> queue = session.getQueue();
 			List<Serializable> messages = batchSize == 1 ? null : new ArrayList<Serializable>(batchSize);
-			while (session.isValid() && !response.isTerminated()) {
-				try {
+			try {
+				while (session.isValid() && !response.isTerminated()) {
 					synchronized (session) {
 						while (queue.isEmpty() && session.isValid() && !response.isTerminated()) {
 							session.wait();
@@ -109,10 +115,10 @@ public class BlockingAsyncServlet extends AsyncServlet {
 						}
 					}
 				}
-				catch (InterruptedException e) {
-					response.terminate();
-					throw new InterruptedIOException(e.getMessage());
-				}
+			}
+			catch (InterruptedException e) {
+				response.terminate();
+				throw new InterruptedIOException(e.getMessage());
 			}
 			
 			if (!session.isValid() && !response.isTerminated()) {
@@ -152,7 +158,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	}
 	
 	@Override
-	public ScheduledFuture<?> scheduleHeartbeat(final CometServletResponseImpl response) {
+	public ScheduledFuture<?> scheduleHeartbeat(final CometServletResponseImpl response, CometSessionImpl session) {
 		return executor.schedule(new Runnable() {
 			@Override
 			public void run() {
@@ -160,4 +166,39 @@ public class BlockingAsyncServlet extends AsyncServlet {
 			}
 		}, response.getHeartbeat(), TimeUnit.MILLISECONDS);
 	}
+	
+	@Override
+	public ScheduledFuture<?> scheduleSessionKeepAlive(final CometServletResponseImpl response, final CometSessionImpl session) {
+//		System.err.println("ACCESS " + new Date(session.getHttpSession().getLastAccessedTime()));
+//		long keepAliveTime = getKeepAliveTime(session.getHttpSession());
+//		if (keepAliveTime <= 0) {
+//			System.err.println(new Date() + " terminating for " + keepAliveTime);
+//			response.tryTerminate();
+//			return null;
+//		}
+//		else {
+//			System.err.println(new Date() + " waiting until " + new Date(System.currentTimeMillis() + keepAliveTime) + " for " + keepAliveTime);
+//			return executor.schedule(new Runnable() {
+//				@Override
+//				public void run() {
+//					long keepAliveTime = getKeepAliveTime(session.getHttpSession());
+//					System.err.println(new Date() + " now has " + keepAliveTime);
+//					if (keepAliveTime <= 0) {
+//						System.err.println(new Date() + " terminating for " + keepAliveTime);
+//						response.tryTerminate();
+//					}
+//					else {
+//						System.err.println(new Date() + " reshedule for " + keepAliveTime);
+//						response.scheduleSessionKeepAlive();
+//					}
+//				}
+//			}, keepAliveTime, TimeUnit.MILLISECONDS);
+//		}
+		return null;
+	}
+	
+//	private long getKeepAliveTime(HttpSession httpSession) {
+//		long lastAccessedTime = httpSession.isNew() ? httpSession.getCreationTime() : httpSession.getLastAccessedTime();
+//		return (httpSession.getMaxInactiveInterval() * 1000) - (System.currentTimeMillis() - lastAccessedTime) - SESSION_KEEP_ALIVE_BUFFER;
+//	}
 }

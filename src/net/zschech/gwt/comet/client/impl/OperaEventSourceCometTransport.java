@@ -52,7 +52,7 @@ public class OperaEventSourceCometTransport extends CometTransport {
 	
 	@Override
 	public void connect() {
-		DOM.setElementAttribute(eventsource, "src", client.getUrl());
+		DOM.setElementAttribute(eventsource, "src", getUrl());
 	}
 	
 	@Override

@@ -75,7 +75,7 @@ public class HTTPRequestCometTransport extends CometTransport {
 		read = 0;
 		
 		xmlHttpRequest = createXMLHttpRequest();
-		String sendError = connect(xmlHttpRequest, client.getUrl(), this);
+		String sendError = connect(xmlHttpRequest, getUrl(), this);
 		if (sendError != null) {
 			xmlHttpRequest = null;
 			listener.onError(new RequestException(sendError), false);

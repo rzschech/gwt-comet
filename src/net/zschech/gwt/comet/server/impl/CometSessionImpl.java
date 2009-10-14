@@ -19,7 +19,6 @@ import java.io.Serializable;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javax.servlet.ServletContext;
 import javax.servlet.http.HttpSession;
 
 import net.zschech.gwt.comet.server.CometSession;
@@ -65,6 +64,11 @@ public class CometSessionImpl implements CometSession {
 		}
 		catch (IllegalStateException e) {
 			// HttpSession already invalidated
+		}
+		
+		CometServletResponseImpl prevResponse = response.getAndSet(null);
+		if (prevResponse != null) {
+			prevResponse.tryTerminate();
 		}
 	}
 	

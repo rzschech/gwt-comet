@@ -36,4 +36,9 @@ public abstract class CometTransport {
 	public abstract void connect();
 	
 	public abstract void disconnect();
+	
+	public String getUrl() {
+		String url = client.getUrl();
+		return url + (url.contains("?") ? "&" : "?") + Long.toString(System.currentTimeMillis(), Character.MAX_RADIX);
+	}
 }

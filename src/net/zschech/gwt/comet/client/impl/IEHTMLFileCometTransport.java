@@ -72,7 +72,7 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	@Override
 	public void connect() {
 		expectingDisconnection = false;
-		iframe.setSrc(client.getUrl());
+		iframe.setSrc(getUrl());
 	}
 	
 	@Override
