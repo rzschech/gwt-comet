@@ -115,6 +115,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		
 		session = (CometSessionImpl) CometServlet.getCometSession(httpSession, create, create ? new ConcurrentLinkedQueue<Serializable>() : null);
 		if (create) {
+			session.setLastAccessedTime(System.currentTimeMillis());
 			scheduleSessionKeepAlive();
 			session.setResponse(this);
 		}
@@ -172,9 +173,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		outputStream = getOutputStream(outputStream);
 		writer = new OutputStreamWriter(outputStream, "UTF-8");
 		
-		getSession(false);
 		scheduleHeartbeat();
+		getSession(false);
 		if (session != null) {
+			session.setLastAccessedTime(System.currentTimeMillis());
 			scheduleSessionKeepAlive();
 			
 			// This must be as the last step of initialise because after this
@@ -183,7 +185,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			// next response
 			CometServletResponseImpl prevResponse = session.setResponse(this);
 			if (prevResponse != null) {
-				prevResponse.terminate();
+				prevResponse.tryTerminate();
 			}
 		}
 	}

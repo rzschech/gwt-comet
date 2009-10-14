@@ -30,6 +30,7 @@ public class CometSessionImpl implements CometSession {
 	private final AsyncServlet async;
 	private final AtomicReference<CometServletResponseImpl> response;
 	private volatile boolean valid;
+	private volatile long lastAccessedTime;
 	
 	public CometSessionImpl(HttpSession httpSession, Queue<Serializable> queue, AsyncServlet async) {
 		this.httpSession = httpSession;
@@ -92,5 +93,13 @@ public class CometSessionImpl implements CometSession {
 	
 	public CometServletResponseImpl getResponse() {
 		return response.get();
+	}
+	
+	public void setLastAccessedTime(long lastAccessedTime) {
+		this.lastAccessedTime = lastAccessedTime;
+	}
+	
+	public long getLastAccessedTime() {
+		return lastAccessedTime;
 	}
 }

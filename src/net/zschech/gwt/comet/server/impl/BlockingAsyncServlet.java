@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpSession;
 
 /**
  * This AsyncServlet implementation blocks the http request processing thread.
@@ -39,7 +40,7 @@ import javax.servlet.ServletException;
  */
 public class BlockingAsyncServlet extends AsyncServlet {
 	
-	// private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
+	 private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
 
 	private ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 	
@@ -169,36 +170,24 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	
 	@Override
 	public ScheduledFuture<?> scheduleSessionKeepAlive(final CometServletResponseImpl response, final CometSessionImpl session) {
-//		System.err.println("ACCESS " + new Date(session.getHttpSession().getLastAccessedTime()));
-//		long keepAliveTime = getKeepAliveTime(session.getHttpSession());
-//		if (keepAliveTime <= 0) {
-//			System.err.println(new Date() + " terminating for " + keepAliveTime);
-//			response.tryTerminate();
-//			return null;
-//		}
-//		else {
-//			System.err.println(new Date() + " waiting until " + new Date(System.currentTimeMillis() + keepAliveTime) + " for " + keepAliveTime);
-//			return executor.schedule(new Runnable() {
-//				@Override
-//				public void run() {
-//					long keepAliveTime = getKeepAliveTime(session.getHttpSession());
-//					System.err.println(new Date() + " now has " + keepAliveTime);
-//					if (keepAliveTime <= 0) {
-//						System.err.println(new Date() + " terminating for " + keepAliveTime);
-//						response.tryTerminate();
-//					}
-//					else {
-//						System.err.println(new Date() + " reshedule for " + keepAliveTime);
-//						response.scheduleSessionKeepAlive();
-//					}
-//				}
-//			}, keepAliveTime, TimeUnit.MILLISECONDS);
-//		}
-		return null;
+		long keepAliveTime = getKeepAliveTime(session);
+		if (keepAliveTime <= 0) {
+			response.tryTerminate();
+			return null;
+		}
+		else {
+			return executor.schedule(new Runnable() {
+				@Override
+				public void run() {
+					response.scheduleSessionKeepAlive();
+				}
+			}, keepAliveTime, TimeUnit.MILLISECONDS);
+		}
 	}
 	
-//	private long getKeepAliveTime(HttpSession httpSession) {
-//		long lastAccessedTime = httpSession.isNew() ? httpSession.getCreationTime() : httpSession.getLastAccessedTime();
-//		return (httpSession.getMaxInactiveInterval() * 1000) - (System.currentTimeMillis() - lastAccessedTime) - SESSION_KEEP_ALIVE_BUFFER;
-//	}
+	private long getKeepAliveTime(CometSessionImpl session) {
+		HttpSession httpSession = session.getHttpSession();
+		long lastAccessedTime = Math.max(session.getLastAccessedTime(), httpSession.getLastAccessedTime());
+		return (httpSession.getMaxInactiveInterval() * 1000) - (System.currentTimeMillis() - lastAccessedTime) - SESSION_KEEP_ALIVE_BUFFER;
+	}
 }
