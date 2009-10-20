@@ -25,10 +25,64 @@ import javax.servlet.ServletException;
 
 public abstract class AsyncServlet {
 	
+	public static final String SERVLET_CONTEXT_KEY = "net.zschech.gwt.comet.server.AsyncServlet";
+	
+	public static AsyncServlet create(ServletContext context) {
+		synchronized (context) {
+			AsyncServlet async = (AsyncServlet) context.getAttribute(SERVLET_CONTEXT_KEY);
+			if (async == null) {
+				String server;
+				String serverInfo = context.getServerInfo();
+				if (serverInfo.startsWith("jetty-")) {
+					server = "Jetty";
+				}
+				else {
+					server = null;
+				}
+				
+				if (server != null) {
+					context.log("Creating " + server + " async servlet handler for server " + serverInfo);
+					try {
+						async = (AsyncServlet) Class.forName("net.zschech.gwt.comet.server.impl." + server + "AsyncServlet").newInstance();
+					}
+					catch (Exception e) {
+						context.log("Error creating " + server + " async servlet handler for server " + serverInfo + ". Falling back to default blocking async servlet handler.", e);
+						async = new BlockingAsyncServlet();
+					}
+				}
+				else {
+					context.log("Creating blocking async servlet handler for server " + serverInfo);
+					async = new BlockingAsyncServlet();
+				}
+				
+				try {
+					async.init(context);
+					context.setAttribute(SERVLET_CONTEXT_KEY, async);
+				}
+				catch (ServletException e) {
+					throw new Error("Error setting up async servlet");
+				}
+			}
+			return async;
+		}
+	}
+	
 	private ServletContext context;
-
+	
 	public void init(ServletContext context) throws ServletException {
 		this.context = context;
+	}
+
+	protected ServletContext getServletContext() {
+		return context;
+	}
+	
+	protected void log(String message) {
+		context.log(message);
+	}
+	
+	protected void log(String message, Throwable throwable) {
+		context.log(message, throwable);
 	}
 	
 	public abstract Object suspend(CometServletResponseImpl response, CometSessionImpl session) throws IOException;
@@ -43,57 +97,12 @@ public abstract class AsyncServlet {
 	
 	public abstract ScheduledFuture<?> scheduleSessionKeepAlive(CometServletResponseImpl response, CometSessionImpl session);
 	
-	private static AsyncServlet async;
-	
-	protected void log(String message) {
-		context.log(message);
-	}
-	
-	protected void log(String message, Throwable throwable) {
-		context.log(message, throwable);
-	}
-	
-	public synchronized static AsyncServlet create(ServletContext context) {
-		if (async == null) {
-			String server;
-			if (context.getClass().getName().equals("org.mortbay.jetty.servlet.Context$SContext")) {
-				server = "Jetty";
-			}
-			else {
-				server = null;
-			}
-			
-			if (server != null) {
-				context.log("Creating " + server + " async servlet handler");
-				try {
-					async = (AsyncServlet) Class.forName("net.zschech.gwt.comet.server.impl." + server + "AsyncServlet").newInstance();
-				}
-				catch (Exception e) {
-					context.log("Error creating " + server + " async servlet handler. Falling back to default blocking async servlet handler.", e);
-					async = new BlockingAsyncServlet();
-				}
-			}
-			else {
-				context.log("Creating blocking async servlet handler. This handler requires one thread per comet connection");
-				async = new BlockingAsyncServlet();
-			}
-			
-			try {
-				async.init(context);
-			}
-			catch (ServletException e) {
-				throw new RuntimeException("Error setting up async servlet");
-			}
-		}
-		return async;
-	}
-	
 	@SuppressWarnings("unused")
 	public Flushable getFlushable(CometServletResponseImpl response) throws IOException {
 		return null;
 	}
 	
-	private static boolean logged = false;
+	private boolean logged = false;
 	
 	protected Object get(String path, Object object) {
 		try {
