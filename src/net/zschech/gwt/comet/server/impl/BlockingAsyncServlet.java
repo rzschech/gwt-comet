@@ -34,21 +34,16 @@ import javax.servlet.http.HttpSession;
 /**
  * This AsyncServlet implementation blocks the HTTP request processing thread.
  * 
- * It does not generate notifications for client disconnection and therefore must wait for a heartbeat send attempt
- * to detect client disconnection :-(
+ * It does not generate notifications for client disconnection and therefore must wait for a heartbeat send attempt to
+ * detect client disconnection :-(
  * 
  * @author Richard Zschech
  */
 public class BlockingAsyncServlet extends AsyncServlet {
 	
-	 private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
-
-	private ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
-		@Override
-		public Thread newThread(Runnable runnable) {
-			return new Thread(runnable, "gwt-comet heatbeat");
-		}
-	});
+	private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
+	
+	private ScheduledExecutorService executor;
 	
 	public static String BATCH_SIZE = "net.zschech.gwt.comet.server.batch.size";
 	
@@ -57,6 +52,14 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	@Override
 	public void init(ServletContext context) throws ServletException {
 		super.init(context);
+		
+		executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+			@Override
+			public Thread newThread(Runnable runnable) {
+				return new Thread(runnable, "gwt-comet heatbeat " + getServletContext().getServletContextName());
+			}
+		});
+		
 		String batchSizeString = context.getInitParameter(BATCH_SIZE);
 		if (batchSizeString != null) {
 			try {
