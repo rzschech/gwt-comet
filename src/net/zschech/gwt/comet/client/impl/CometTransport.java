@@ -18,6 +18,8 @@ package net.zschech.gwt.comet.client.impl;
 import net.zschech.gwt.comet.client.CometClient;
 import net.zschech.gwt.comet.client.CometListener;
 
+import com.google.gwt.core.client.Duration;
+
 /**
  * This is the base class for the comet implementations
  * 
@@ -39,6 +41,6 @@ public abstract class CometTransport {
 	
 	public String getUrl() {
 		String url = client.getUrl();
-		return url + (url.contains("?") ? "&" : "?") + Long.toString(System.currentTimeMillis(), Character.MAX_RADIX);
+		return url + (url.contains("?") ? "&" : "?") + Integer.toString((int) Duration.currentTimeMillis(), Character.MAX_RADIX);
 	}
 }
