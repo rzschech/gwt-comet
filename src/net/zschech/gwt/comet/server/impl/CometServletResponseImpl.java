@@ -34,6 +34,7 @@ import javax.servlet.http.HttpSession;
 import net.zschech.gwt.comet.server.CometServlet;
 import net.zschech.gwt.comet.server.CometServletResponse;
 import net.zschech.gwt.comet.server.CometSession;
+import net.zschech.gwt.comet.server.deflate.DeflaterOutputStream;
 
 import com.google.gwt.user.client.rpc.SerializationException;
 import com.google.gwt.user.server.rpc.SerializationPolicy;
@@ -167,7 +168,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		String acceptEncoding = request.getHeader("Accept-Encoding");
 		if (acceptEncoding != null && acceptEncoding.contains("deflate")) {
 			response.setHeader("Content-Encoding", "deflate");
-			outputStream = new FlushableDeflaterOutputStream(outputStream);
+			outputStream = new DeflaterOutputStream(outputStream);
 		}
 		
 		outputStream = getOutputStream(outputStream);
