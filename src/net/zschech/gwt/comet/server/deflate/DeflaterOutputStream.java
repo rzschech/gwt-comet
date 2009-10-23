@@ -27,7 +27,6 @@ package net.zschech.gwt.comet.server.deflate;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.zip.Adler32;
 
 /**
  * <p>
@@ -45,10 +44,7 @@ import java.util.zip.Adler32;
 
 public class DeflaterOutputStream extends OutputStream {
 	
-	private OutputStream out;
 	private Deflater deflater;
-	private byte[] oneByte;
-	private Adler32 adler;
 	
 	/**
 	 * Create the stream with the provided transport stream. The default compression level (<code>MEDIUM</code>) is
@@ -74,45 +70,8 @@ public class DeflaterOutputStream extends OutputStream {
 	 *             on I/O error with the transport stream
 	 */
 	public DeflaterOutputStream(OutputStream out, int level) throws IOException {
-		this.out = out;
 		deflater = new Deflater(level);
 		deflater.setOut(out);
-		oneByte = new byte[1];
-		adler = new Adler32();
-		
-		/*
-		 * Compression method = 8 (DEFLATE). Compression info = 7 (window length = 2^15).
-		 */
-		int cmf = 8 + (7 << 4);
-		
-		/*
-		 * Flags.
-		 */
-		int flags;
-		switch (level) {
-		case Deflater.HUFF:
-			flags = 0;
-			break;
-		case Deflater.SPEED:
-			flags = 1;
-			break;
-		case Deflater.MEDIUM:
-			flags = 2;
-			break;
-		case Deflater.COMPACT:
-			flags = 3;
-			break;
-		default:
-			flags = 2;
-			break;
-		}
-		flags <<= 6;
-		int rem = ((cmf << 8) | flags) % 31;
-		if (rem > 0)
-			flags += (31 - rem);
-		
-		out.write(cmf);
-		out.write(flags);
 	}
 	
 	/**
@@ -124,12 +83,7 @@ public class DeflaterOutputStream extends OutputStream {
 	@Override
 	public void close() throws IOException {
 		deflater.terminate();
-		int value = (int) adler.getValue();
-		out.write(value >>> 24);
-		out.write(value >>> 16);
-		out.write(value >>> 8);
-		out.write(value);
-		out.close();
+		deflater.getOut().close();
 	}
 	
 	/**
@@ -149,8 +103,7 @@ public class DeflaterOutputStream extends OutputStream {
 	/** @see OutputStream */
 	@Override
 	public void write(int b) throws IOException {
-		oneByte[0] = (byte) b;
-		write(oneByte, 0, 1);
+		write(new byte[] { (byte) b }, 0, 1);
 	}
 	
 	/** @see OutputStream */
@@ -163,6 +116,5 @@ public class DeflaterOutputStream extends OutputStream {
 	@Override
 	public void write(byte[] buf, int off, int len) throws IOException {
 		deflater.process(buf, off, len);
-		adler.update(buf, off, len);
 	}
 }
