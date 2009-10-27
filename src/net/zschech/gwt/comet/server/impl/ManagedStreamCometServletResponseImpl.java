@@ -41,7 +41,7 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	}
 	
 	@Override
-	public void suspend() throws IOException {
+	public void doSuspend() throws IOException {
 		countOutputStream.setIgnoreFlush(true);
 		writer.flush();
 		countOutputStream.setIgnoreFlush(false);
@@ -50,7 +50,6 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 		if (padding != null) {
 			writer.append(padding);
 		}
-		super.suspend();
 	}
 	
 	@Override

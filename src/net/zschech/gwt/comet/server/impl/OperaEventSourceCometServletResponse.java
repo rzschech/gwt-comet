@@ -58,6 +58,10 @@ public class OperaEventSourceCometServletResponse extends CometServletResponseIm
 	}
 	
 	@Override
+	protected void doSuspend() throws IOException {
+	}
+	
+	@Override
 	protected void doWrite(List<? extends Serializable> messages) throws IOException {
 		for (Serializable message : messages) {
 			CharSequence string;

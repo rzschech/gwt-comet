@@ -11,6 +11,14 @@ import org.mortbay.jetty.SessionManager;
 import org.mortbay.jetty.servlet.Context;
 import org.mortbay.jetty.servlet.Context.SContext;
 
+/**
+ * An extension of {@link BlockingAsyncServlet} for Jetty.
+ * 
+ * This extension improves on the default session keep alive stratagy, refreshing the connection just before the session
+ * expires, by updating the session managers last access time when ever sending data down the Comet connection
+ * 
+ * @author Richard Zschech
+ */
 public class JettyAsyncServlet extends BlockingAsyncServlet {
 	
 	private SessionManager sessionManager;

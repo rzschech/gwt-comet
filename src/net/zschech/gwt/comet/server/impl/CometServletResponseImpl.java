@@ -198,6 +198,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 				return;
 			}
 			
+			doSuspend();
 			flush();
 			suspended = true;
 			s = session;
@@ -331,6 +332,8 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	protected abstract void doSendError(int statusCode, String message) throws IOException;
+	
+	protected abstract void doSuspend() throws IOException;
 	
 	protected abstract void doWrite(List<? extends Serializable> messages) throws IOException;
 	
