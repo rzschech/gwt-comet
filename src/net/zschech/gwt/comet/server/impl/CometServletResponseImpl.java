@@ -129,7 +129,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 		sessionKeepAliveFuture = async.scheduleSessionKeepAlive(this, session);
 	}
-
+	
 	private void scheduleHeartbeat() {
 		assert Thread.holdsLock(this);
 		if (heartbeatFuture != null) {
@@ -203,11 +203,9 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			suspended = true;
 			s = session;
 			
-			// Don't hold onto the request while suspended as it takes up
-			// memory.
-			// Also Jetty and possibly other web servers reuse the
-			// HttpServletRequests so we can't assume
-			// they are still valid after they have been suspended
+			// Don't hold onto the request while suspended as it takes up memory.
+			// Also Jetty and possibly other web servers reuse the HttpServletRequests so we can't assume they are still
+			// valid after they have been suspended
 			request = null;
 		}
 		

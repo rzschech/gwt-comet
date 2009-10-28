@@ -44,7 +44,11 @@ public class SerializeTestServlet extends CometServlet {
 						for (int b = 0; b < batch; b++) {
 							messages.add(new TestData(c++, "xxx"));
 						}
-						cometResponse.write(messages);
+						synchronized (cometResponse) {
+							if (!cometResponse.isTerminated()) {
+								cometResponse.write(messages);
+							}
+						}
 					}
 					cometResponse.terminate();
 				}

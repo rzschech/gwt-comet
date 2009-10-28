@@ -67,9 +67,9 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	
 	@Override
 	protected CharSequence getPadding(int written) {
-		if (getRequest().getParameter("padding") != null) {
-			// System.out.println("Written " + written);
-			int padding = Integer.parseInt(getRequest().getParameter("padding"));
+		String paddingParameter = getRequest().getParameter("padding");
+		if (paddingParameter != null) {
+			int padding = Integer.parseInt(paddingParameter);
 			if (written < padding) {
 				StringBuilder result = new StringBuilder(padding - written);
 				for (int i = written; i < padding - 2; i++) {
@@ -137,6 +137,10 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	
 	@Override
 	protected boolean isOverMaxLength(int written) {
+		if (length != null) {
+			return written > length;
+		}
+		else {
 //		 if (chrome) {
 //		 Chrome seems to have a problem with lots of small messages consuming lots of memory.
 //		 I'm guessing for each readyState = 3 event it copies the responseText from its IO system to its JavaScript
@@ -146,6 +150,7 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 //		 else {
 //		return false;//written > 2 * 1024 * 1024;
 //		 }
+		}
 	}
 	
 	@Override

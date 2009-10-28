@@ -52,8 +52,13 @@
 		<url-pattern>/net.zschech.gwt.comettest.CometTest/error</url-pattern>
 	</servlet-mapping>
 	
+	<session-config>
+		<session-timeout>1</session-timeout>
+	</session-config>
+	
  	<!-- Default page to serve -->
 	<welcome-file-list>
 		<welcome-file>CometTest.html</welcome-file>
 	</welcome-file-list>
+	
 </web-app>

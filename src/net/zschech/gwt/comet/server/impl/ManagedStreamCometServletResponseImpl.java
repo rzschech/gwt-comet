@@ -29,6 +29,8 @@ import com.google.gwt.user.server.rpc.SerializationPolicy;
 
 public abstract class ManagedStreamCometServletResponseImpl extends CometServletResponseImpl {
 	private CountOutputStream countOutputStream;
+	protected Integer padding;
+	protected Integer length;
 	
 	public ManagedStreamCometServletResponseImpl(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, CometServlet servlet, AsyncServlet async, int heartbeat) {
 		super(request, response, serializationPolicy, servlet, async, heartbeat);
@@ -42,6 +44,16 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	
 	@Override
 	public void doSuspend() throws IOException {
+		String paddingParameter = getRequest().getParameter("padding");
+		if (paddingParameter != null) {
+			padding = Integer.parseInt(paddingParameter);
+		}
+		
+		String lengthParameter = getRequest().getParameter("length");
+		if (lengthParameter != null) {
+			length = Integer.parseInt(lengthParameter);
+		}
+		
 		countOutputStream.setIgnoreFlush(true);
 		writer.flush();
 		countOutputStream.setIgnoreFlush(false);

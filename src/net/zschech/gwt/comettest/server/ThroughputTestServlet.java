@@ -41,7 +41,11 @@ public class ThroughputTestServlet extends CometServlet {
 						for (int b = 0; b < batch; b++) {
 							messages.add(String.valueOf(System.currentTimeMillis()));
 						}
-						cometResponse.write(messages);
+						synchronized (cometResponse) {
+							if (!cometResponse.isTerminated()) {
+								cometResponse.write(messages);
+							}
+						}
 					}
 					cometResponse.terminate();
 				}

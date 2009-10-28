@@ -68,6 +68,13 @@ public class CometTestEntryPoint implements EntryPoint {
 				throughputTest();
 			}
 		}));
+
+		RootPanel.get().add(new Button("Serialize", new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				serializeTest();
+			}
+		}));
 		
 		RootPanel.get().add(new Button("Latency", new ClickHandler() {
 			@Override
@@ -94,13 +101,6 @@ public class CometTestEntryPoint implements EntryPoint {
 			@Override
 			public void onClick(ClickEvent event) {
 				escapeTest();
-			}
-		}));
-		
-		RootPanel.get().add(new Button("Serialize", new ClickHandler() {
-			@Override
-			public void onClick(ClickEvent event) {
-				serializeTest();
 			}
 		}));
 		
@@ -141,7 +141,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		final int c = 1000;
 		final int b = 10;
 		
-		start(GWT.getModuleBaseURL() + "throughput?count=" + c + "&batch=" + b, new CometListener() {
+		start(GWT.getModuleBaseURL() + "throughput?count=" + c + "&batch=" + b + "&length=" + (c * b * 100), new CometListener() {
 			double start = Duration.currentTimeMillis();
 			double connected;
 			double disconnected;
@@ -405,7 +405,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		
 		final int c = 1000;
 		final int b = 10;
-		start(GWT.getModuleBaseURL() + "serialize?count=" + c + "&batch=" + b, serializer, new CometListener() {
+		start(GWT.getModuleBaseURL() + "serialize?count=" + c + "&batch=" + b + "&length=" + (c * b * 100), serializer, new CometListener() {
 			double start = Duration.currentTimeMillis();
 			double connected;
 			double disconnected;

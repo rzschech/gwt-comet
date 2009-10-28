@@ -66,9 +66,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	
 	@Override
 	protected CharSequence getPadding(int written) {
-		if (getRequest().getParameter("padding") != null) {
-			// System.out.println("Written " + written);
-			int padding = Integer.parseInt(getRequest().getParameter("padding"));
+		if (padding != null) {
 			if (written < padding) {
 				StringBuilder result = new StringBuilder(padding - written);
 				for (int i = written; i < padding; i++) {
@@ -102,7 +100,6 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	
 	@Override
 	protected void doWrite(List<? extends Serializable> messages) throws IOException {
-		
 		writer.append("<script>");
 		for (Serializable message : messages) {
 			CharSequence string;
@@ -122,7 +119,12 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	
 	@Override
 	protected boolean isOverMaxLength(int written) {
-		return written > 4 * 1024 * 1024;
+		if (length != null) {
+			return written > length;
+		}
+		else {
+			return written > 4 * 1024 * 1024;
+		}
 	}
 	
 	@Override
