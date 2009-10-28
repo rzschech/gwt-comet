@@ -41,6 +41,6 @@ public abstract class CometTransport {
 	
 	public String getUrl() {
 		String url = client.getUrl();
-		return url + (url.contains("?") ? "&" : "?") + Integer.toString((int) Duration.currentTimeMillis(), Character.MAX_RADIX);
+		return url + (url.contains("?") ? "&" : "?") + Integer.toString((int)(Duration.currentTimeMillis() % Integer.MAX_VALUE), Character.MAX_RADIX);
 	}
 }
