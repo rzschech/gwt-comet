@@ -102,13 +102,13 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		};
 		htmlfile.parentWindow.t = function() {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onTerminate()();
-		}
+		};
 		htmlfile.parentWindow.d = function() {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onDisconnected()();
-		}
+		};
 		htmlfile.parentWindow.h = function() {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onHeartbeat()();
-		}
+		};
 
 		return htmlfile.documentElement.getElementsByTagName("iframe").item(0);
 	}-*/;
