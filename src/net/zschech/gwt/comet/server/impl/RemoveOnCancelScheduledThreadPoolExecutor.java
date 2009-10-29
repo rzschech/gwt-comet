@@ -1,0 +1,109 @@
+package net.zschech.gwt.comet.server.impl;
+
+import java.util.concurrent.Callable;
+import java.util.concurrent.Delayed;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+/**
+ * A {@link ScheduledThreadPoolExecutor} that removes cancelled tasks from the work queue.
+ * 
+ * This is required until Java 7's ScheduledThreadPoolExecutor.setRemoveOnCancelPolicy(true) is available.
+ * 
+ * @author Richard Zschech
+ */
+public class RemoveOnCancelScheduledThreadPoolExecutor extends ScheduledThreadPoolExecutor {
+	
+	public RemoveOnCancelScheduledThreadPoolExecutor(int corePoolSize, RejectedExecutionHandler handler) {
+		super(corePoolSize, handler);
+	}
+	
+	public RemoveOnCancelScheduledThreadPoolExecutor(int corePoolSize, ThreadFactory threadFactory, RejectedExecutionHandler handler) {
+		super(corePoolSize, threadFactory, handler);
+	}
+	
+	public RemoveOnCancelScheduledThreadPoolExecutor(int corePoolSize, ThreadFactory threadFactory) {
+		super(corePoolSize, threadFactory);
+	}
+	
+	public RemoveOnCancelScheduledThreadPoolExecutor(int corePoolSize) {
+		super(corePoolSize);
+	}
+	
+	@Override
+	public <V> ScheduledFuture<V> schedule(Callable<V> callable, long delay, TimeUnit unit) {
+		return wrap(super.schedule(callable, delay, unit));
+	}
+	
+	@Override
+	public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
+		return wrap(super.schedule(command, delay, unit));
+	}
+	
+	@Override
+	public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit) {
+		return wrap(super.scheduleAtFixedRate(command, initialDelay, period, unit));
+	}
+	
+	@Override
+	public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit unit) {
+		return wrap(super.scheduleWithFixedDelay(command, initialDelay, delay, unit));
+	}
+	
+	public <V> ScheduledFuture<V> wrap(final ScheduledFuture<V> wrap) {
+		return new WrapScheduledFuture<V>(wrap);
+	}
+	
+	public class WrapScheduledFuture<V> implements ScheduledFuture<V> {
+		
+		private final ScheduledFuture<V> wrap;
+		
+		public WrapScheduledFuture(ScheduledFuture<V> wrap) {
+			this.wrap = wrap;
+		}
+		
+		@Override
+		public long getDelay(TimeUnit unit) {
+			return wrap.getDelay(unit);
+		}
+		
+		@Override
+		public int compareTo(Delayed o) {
+			return wrap.compareTo(((WrapScheduledFuture) o).wrap);
+		}
+		
+		@Override
+		public boolean cancel(boolean mayInterruptIfRunning) {
+			boolean cancelled = wrap.cancel(mayInterruptIfRunning);
+			if (cancelled) {
+				getQueue().remove(wrap);
+			}
+			return cancelled;
+		}
+		
+		@Override
+		public V get() throws InterruptedException, ExecutionException {
+			return wrap.get();
+		}
+		
+		@Override
+		public V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+			return wrap.get(timeout, unit);
+		}
+		
+		@Override
+		public boolean isCancelled() {
+			return wrap.isCancelled();
+		}
+		
+		@Override
+		public boolean isDone() {
+			return wrap.isDone();
+		}
+	}
+}

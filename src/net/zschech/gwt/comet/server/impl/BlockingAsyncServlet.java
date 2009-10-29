@@ -21,7 +21,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
@@ -53,7 +52,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	public void init(ServletContext context) throws ServletException {
 		super.init(context);
 		
-		executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+		executor = new RemoveOnCancelScheduledThreadPoolExecutor(1, new ThreadFactory() {
 			@Override
 			public Thread newThread(Runnable runnable) {
 				return new Thread(runnable, "gwt-comet heatbeat " + getServletContext().getServletContextName());
