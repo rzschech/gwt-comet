@@ -33,8 +33,8 @@ import javax.servlet.http.HttpSession;
 /**
  * This AsyncServlet implementation blocks the HTTP request processing thread.
  * 
- * It does not generate notifications for client disconnection and therefore must wait for a heartbeat send attempt to
- * detect client disconnection :-(
+ * It does not generate notifications for client disconnection and therefore
+ * must wait for a heartbeat send attempt to detect client disconnection :-(
  * 
  * @author Richard Zschech
  */
@@ -96,38 +96,43 @@ public class BlockingAsyncServlet extends AsyncServlet {
 			Queue<? extends Serializable> queue = session.getQueue();
 			List<Serializable> messages = batchSize == 1 ? null : new ArrayList<Serializable>(batchSize);
 			try {
-				while (session.isValid() && !response.isTerminated()) {
-					synchronized (session) {
-						while (queue.isEmpty() && session.isValid() && !response.isTerminated()) {
-							session.wait();
-						}
-					}
-					
-					synchronized (response) {
-						if (session.isValid() && !response.isTerminated()) {
-							Serializable message = queue.remove();
-							if (batchSize == 1) {
-								response.write(message, queue.isEmpty());
+				try {
+					while (session.isValid() && !response.isTerminated()) {
+						synchronized (session) {
+							while (queue.isEmpty() && session.isValid() && !response.isTerminated()) {
+								session.wait();
 							}
-							else {
-								messages.add(message);
-								for (int i = 0; i < batchSize - 1; i++) {
-									message = queue.poll();
-									if (message == null) {
-										break;
-									}
-									messages.add(message);
+						}
+						
+						synchronized (response) {
+							if (session.isValid() && !response.isTerminated()) {
+								Serializable message = queue.remove();
+								if (batchSize == 1) {
+									response.write(message, queue.isEmpty());
 								}
-								response.write(messages, queue.isEmpty());
-								messages.clear();
+								else {
+									messages.add(message);
+									for (int i = 0; i < batchSize - 1; i++) {
+										message = queue.poll();
+										if (message == null) {
+											break;
+										}
+										messages.add(message);
+									}
+									response.write(messages, queue.isEmpty());
+									messages.clear();
+								}
 							}
 						}
 					}
 				}
+				catch (InterruptedException e) {
+					response.terminate();
+					throw new InterruptedIOException(e.getMessage());
+				}
 			}
-			catch (InterruptedException e) {
-				response.terminate();
-				throw new InterruptedIOException(e.getMessage());
+			catch (IOException e) {
+				log("Error writing messages", e);
 			}
 			
 			if (!session.isValid() && !response.isTerminated()) {
@@ -161,7 +166,6 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	@Override
 	public void enqueued(CometSessionImpl session) {
 		synchronized (session) {
-			// BLAH don't want to wait for the session lock when enqueing :-(
 			session.notifyAll();
 		}
 	}

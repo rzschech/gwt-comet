@@ -34,7 +34,12 @@ public abstract class AsyncServlet {
 				String server;
 				String serverInfo = context.getServerInfo();
 				if (serverInfo.startsWith("jetty-")) {
+					// e.g. jetty-6.1.x
 					server = "Jetty";
+				}
+				else if (serverInfo.startsWith("Apache Tomcat/")) {
+					// e.g. Apache Tomcat/6.0.18
+					server = "Catalina";
 				}
 				else {
 					server = null;
@@ -72,7 +77,7 @@ public abstract class AsyncServlet {
 	public void init(ServletContext context) throws ServletException {
 		this.context = context;
 	}
-
+	
 	protected ServletContext getServletContext() {
 		return context;
 	}
@@ -97,7 +102,6 @@ public abstract class AsyncServlet {
 	
 	public abstract ScheduledFuture<?> scheduleSessionKeepAlive(CometServletResponseImpl response, CometSessionImpl session);
 	
-	@SuppressWarnings("unused")
 	public Flushable getFlushable(CometServletResponseImpl response) throws IOException {
 		return null;
 	}
