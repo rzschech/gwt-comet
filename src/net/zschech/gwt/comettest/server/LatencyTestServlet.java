@@ -39,12 +39,16 @@ public class LatencyTestServlet extends CometServlet {
 				try {
 					if (session == null) {
 						for (int i = 0; i < count; i++) {
-							cometResponse.write(String.valueOf(System.currentTimeMillis()));
-							try {
-								Thread.sleep(delay);
-							}
-							catch (InterruptedException e) {
-								throw new InterruptedIOException();
+							synchronized (cometResponse) {
+								if (!cometResponse.isTerminated()) {
+									cometResponse.write(String.valueOf(System.currentTimeMillis()));
+									try {
+										Thread.sleep(delay);
+									}
+									catch (InterruptedException e) {
+										throw new InterruptedIOException();
+									}
+								}
 							}
 						}
 						cometResponse.terminate();
