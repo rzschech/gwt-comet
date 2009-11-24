@@ -30,7 +30,7 @@ import com.google.gwt.user.client.rpc.SerializationException;
 import com.google.gwt.user.client.rpc.StatusCodeException;
 
 /**
- * This class uses IE's ActiveX "htmlfile" with an embedded iframe to stream events.<br/>
+ * This class uses IE's ActiveX "htmlfile" with an embedded iframe to stream events.
  * http://cometdaily.com/2007/11/18/ie-activexhtmlfile-transport-part-ii/
  * 
  * The main issue with this implementation is that we can't detect initial connection errors. A connection timer is
@@ -97,19 +97,22 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		htmlfile.parentWindow.c = function(heartbeat) {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onConnected(I)(heartbeat);
 		};
-		htmlfile.parentWindow.e = function(statusCode, message) {
-			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onError(ILjava/lang/String;)(statusCode, message);
-		};
-		htmlfile.parentWindow.t = function() {
-			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onTerminate()();
-		};
 		htmlfile.parentWindow.d = function() {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onDisconnected()();
+		};
+		htmlfile.parentWindow.e = function(statusCode, message) {
+			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onError(ILjava/lang/String;)(statusCode, message);
 		};
 		htmlfile.parentWindow.h = function() {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onHeartbeat()();
 		};
-
+		htmlfile.parentWindow.r = function() {
+			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onRefresh()();
+		};
+		htmlfile.parentWindow.t = function() {
+			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onTerminate()();
+		};
+		
 		return htmlfile.documentElement.getElementsByTagName("iframe").item(0);
 	}-*/;
 	
@@ -151,16 +154,6 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	}
 	
 	@SuppressWarnings("unused")
-	private void onError(int statusCode, String message) {
-		listener.onError(new StatusCodeException(statusCode, message), false);
-	}
-	
-	@SuppressWarnings("unused")
-	private void onTerminate() {
-		expectingDisconnection = true;
-	}
-	
-	@SuppressWarnings("unused")
 	private void onDisconnected() {
 		body = null;
 		if (expectingDisconnection) {
@@ -172,7 +165,22 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	}
 	
 	@SuppressWarnings("unused")
+	private void onError(int statusCode, String message) {
+		listener.onError(new StatusCodeException(statusCode, message), false);
+	}
+	
+	@SuppressWarnings("unused")
 	private void onHeartbeat() {
 		listener.onHeartbeat();
+	}
+	
+	@SuppressWarnings("unused")
+	private void onRefresh() {
+		listener.onRefresh();
+	}
+	
+	@SuppressWarnings("unused")
+	private void onTerminate() {
+		expectingDisconnection = true;
 	}
 }

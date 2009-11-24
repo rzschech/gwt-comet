@@ -37,17 +37,22 @@ public interface CometListener {
 	public void onDisconnected();
 	
 	/**
-	 * The connection has received a heartbeat
-	 */
-	public void onHeartbeat();
-	
-	/**
 	 * A Comet error has occurred
 	 * @param exception
 	 * @param connected
 	 */
 	public void onError(Throwable exception, boolean connected);
+
+	/**
+	 * The connection has received a heartbeat
+	 */
+	public void onHeartbeat();
 	
+	/**
+	 * The connection should be refreshed by the client 
+	 */
+	public void onRefresh();
+
 	/**
 	 * A batch of messages has been received
 	 * @param messages

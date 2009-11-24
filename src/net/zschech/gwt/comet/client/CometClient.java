@@ -16,6 +16,7 @@
 package net.zschech.gwt.comet.client;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 import net.zschech.gwt.comet.client.impl.CometTransport;
@@ -49,18 +50,17 @@ public class CometClient {
 	private final String url;
 	private final CometSerializer serializer;
 	private final CometListener listener;
-	private final CometTransport transport;
-	
-	private final Timer connectionTimer = createConnectionTimer();
-	private final Timer reconnectionTimer = createReconnectionTimer();
-	private final Timer heartbeatTimer = createHeartbeatTimer();
+	private CometClientTransportWrapper primaryTransport;
+	private CometClientTransportWrapper refreshTransport;
 	
 	private boolean running;
+	private boolean refreshing;
+	private List<Object> refreshQueue;
+	
+	private static final Object REFRESH = new Object();
 	
 	private int connectionTimeout = 10000;
 	private int reconnectionTimout = 1000;
-	private int heartbeatTimeout;
-	private double lastReceivedTime;
 	
 	public CometClient(String url, CometListener listener) {
 		this(url, null, listener);
@@ -71,8 +71,7 @@ public class CometClient {
 		this.serializer = serializer;
 		this.listener = listener;
 		
-		transport = GWT.create(CometTransport.class);
-		transport.initiate(this, new CometClientImplListener());
+		primaryTransport = new CometClientTransportWrapper();
 	}
 	
 	public String getUrl() {
@@ -122,65 +121,17 @@ public class CometClient {
 	}
 	
 	private void doConnect() {
-		connectionTimer.schedule(connectionTimeout);
-		transport.connect();
+		primaryTransport.connect();
 	}
 	
 	private void doDisconnect() {
-		connectionTimer.cancel();
-		reconnectionTimer.cancel();
-		heartbeatTimer.cancel();
-		transport.disconnect();
+		primaryTransport.disconnect();
+		if (refreshTransport != null) {
+			refreshTransport.disconnect();
+		}
 	}
 	
-	private Timer createConnectionTimer() {
-		return new Timer() {
-			@Override
-			public void run() {
-				doDisconnect();
-				doOnError(new CometTimeoutException(url, connectionTimeout), false);
-			}
-		};
-	}
-	
-	private Timer createHeartbeatTimer() {
-		return new Timer() {
-			@Override
-			public void run() {
-				double currentTimeMillis = Duration.currentTimeMillis();
-				double difference = currentTimeMillis - lastReceivedTime;
-				if (difference >= heartbeatTimeout) {
-					doDisconnect();
-					doOnError(new CometException("Heartbeat failed"), false);
-				}
-				else {
-					// we have received a message since the timer was schedule so reschedule it.
-					schedule(heartbeatTimeout - (int) difference);
-				}
-			}
-		};
-	}
-	
-	private Timer createReconnectionTimer() {
-		return new Timer() {
-			@Override
-			public void run() {
-				if (running) {
-					doConnect();
-				}
-			}
-		};
-	}
-	
-	private void doOnConnected(int heartbeat) {
-		heartbeatTimeout = heartbeat + connectionTimeout;
-		lastReceivedTime = Duration.currentTimeMillis();
-		
-		connectionTimer.cancel();
-		reconnectionTimer.cancel();
-		heartbeatTimer.cancel();
-		heartbeatTimer.schedule(heartbeatTimeout);
-		
+	private void doOnConnected(int heartbeat, CometClientTransportWrapper transport) {
 		try {
 			listener.onConnected(heartbeat);
 		}
@@ -192,46 +143,91 @@ public class CometClient {
 		}
 	}
 	
-	private void doOnDisconnected() {
-		connectionTimer.cancel();
-		reconnectionTimer.cancel();
-		heartbeatTimer.cancel();
-		try {
-			listener.onDisconnected();
-		}
-		catch (RuntimeException e) {
-			uncaught(e);
-		}
-		catch (Error e) {
-			uncaught(e);
-		}
-		
-		if (running) {
-			doConnect();
-		}
-	}
-	
-	private void doOnHeartbeat() {
-		lastReceivedTime = Duration.currentTimeMillis();
-		try {
-			listener.onHeartbeat();
-		}
-		catch (RuntimeException e) {
-			uncaught(e);
-		}
-		catch (Error e) {
-			uncaught(e);
-		}
-	}
-	
-	private void doOnError(Throwable exception, boolean connected) {
-		if (!connected) {
-			doDisconnect();
+	@SuppressWarnings("unchecked")
+	private void doOnDisconnected(CometClientTransportWrapper transport) {
+		if (transport == primaryTransport && refreshing) {
+			refreshing = false;
+			primaryTransport = refreshTransport;
+			refreshTransport = transport;
+			
+			if (refreshQueue != null) {
+				for (Object object : refreshQueue) {
+					if (object == REFRESH) {
+						doOnRefresh(primaryTransport);
+					}
+					else {
+						doOnMessage((List<? extends Serializable>) object, primaryTransport);
+					}
+				}
+				refreshQueue.clear();
+			}
 		}
 		else {
-			connectionTimer.cancel();
-			reconnectionTimer.cancel();
-			heartbeatTimer.cancel();
+			try {
+				listener.onDisconnected();
+			}
+			catch (RuntimeException e) {
+				uncaught(e);
+			}
+			catch (Error e) {
+				uncaught(e);
+			}
+			
+			if (running) {
+				doConnect();
+			}
+		}
+	}
+	
+	private void doOnHeartbeat(CometClientTransportWrapper transport) {
+		if (transport == primaryTransport) {
+			
+			try {
+				listener.onHeartbeat();
+			}
+			catch (RuntimeException e) {
+				uncaught(e);
+			}
+			catch (Error e) {
+				uncaught(e);
+			}
+		}
+	}
+	
+	private void doOnRefresh(CometClientTransportWrapper transport) {
+		if (transport == primaryTransport) {
+			refreshing = true;
+			
+			if (refreshTransport == null) {
+				refreshTransport = new CometClientTransportWrapper();
+			}
+			refreshTransport.connect();
+			
+			try {
+				listener.onRefresh();
+			}
+			catch (RuntimeException e) {
+				uncaught(e);
+			}
+			catch (Error e) {
+				uncaught(e);
+			}
+		}
+		else {
+			refreshEnqueue(REFRESH);
+		}
+	}
+	
+	private void refreshEnqueue(Object message) {
+		if (refreshQueue == null) {
+			refreshQueue = new ArrayList<Object>();
+		}
+		refreshQueue.add(message);
+	}
+	
+	private void doOnError(Throwable exception, boolean connected, CometClientTransportWrapper transport) {
+		if (connected) {
+			doDisconnect();
 		}
 		
 		try {
@@ -244,21 +240,25 @@ public class CometClient {
 			uncaught(e);
 		}
 		
-		if (!connected && running) {
-			reconnectionTimer.schedule(reconnectionTimout);
+		if (running) {
+			primaryTransport.reconnectionTimer.schedule(reconnectionTimout);
 		}
 	}
 	
-	private void doOnMessage(List<? extends Serializable> messages) {
-		lastReceivedTime = Duration.currentTimeMillis();
-		try {
-			listener.onMessage(messages);
+	private void doOnMessage(List<? extends Serializable> messages, CometClientTransportWrapper transport) {
+		if (transport == primaryTransport) {
+			try {
+				listener.onMessage(messages);
+			}
+			catch (RuntimeException e) {
+				uncaught(e);
+			}
+			catch (Error e) {
+				uncaught(e);
+			}
 		}
-		catch (RuntimeException e) {
-			uncaught(e);
-		}
-		catch (Error e) {
-			uncaught(e);
+		else {
+			refreshEnqueue(messages);
 		}
 	}
 	
@@ -282,34 +282,130 @@ public class CometClient {
 		}
 	}
 	
-	private class CometClientImplListener implements CometListener {
+	private class CometClientTransportWrapper implements CometListener {
+		
+		private final CometTransport transport;
+		
+		private final Timer connectionTimer = createConnectionTimer();
+		private final Timer reconnectionTimer = createReconnectionTimer();
+		private final Timer heartbeatTimer = createHeartbeatTimer();
+		
+		private int heartbeatTimeout;
+		private double lastReceivedTime;
+		
+		public CometClientTransportWrapper() {
+			transport = GWT.create(CometTransport.class);
+			transport.initiate(CometClient.this, this);
+		}
+		
+		public void connect() {
+			System.out.println("+ Connecting " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
+			connectionTimer.schedule(connectionTimeout);
+			transport.connect();
+		}
+		
+		public void disconnect() {
+			System.out.println("+ Disconnecting " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
+			cancelTimers();
+			transport.disconnect();
+		}
 		
 		@Override
 		public void onConnected(int heartbeat) {
-			doOnConnected(heartbeat);
+			System.out.println("+ onConnected " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
+			heartbeatTimeout = heartbeat + connectionTimeout;
+			lastReceivedTime = Duration.currentTimeMillis();
+			
+			cancelTimers();
+			heartbeatTimer.schedule(heartbeatTimeout);
+			
+			doOnConnected(heartbeat, this);
 		}
 		
 		@Override
 		public void onDisconnected() {
-			doOnDisconnected();
-		}
-		
-		@Override
-		public void onHeartbeat() {
-			doOnHeartbeat();
+			System.out.println("+ onDisconnected " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
+			cancelTimers();
+			doOnDisconnected(this);
 		}
 		
 		@Override
 		public void onError(Throwable exception, boolean connected) {
-			doOnError(exception, connected);
+			System.out.println("+ onError " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
+			cancelTimers();
+			doOnError(exception, connected, this);
+		}
+		
+		@Override
+		public void onHeartbeat() {
+			System.out.println("+ onHeartbeat " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
+			lastReceivedTime = Duration.currentTimeMillis();
+			doOnHeartbeat(this);
+		}
+		
+		@Override
+		public void onRefresh() {
+			System.out.println("+ onRefresh " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
+			lastReceivedTime = Duration.currentTimeMillis();
+			doOnRefresh(this);
 		}
 		
 		@Override
 		public void onMessage(List<? extends Serializable> messages) {
-			doOnMessage(messages);
+			System.out.println("+ onMessage " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
+			lastReceivedTime = Duration.currentTimeMillis();
+			doOnMessage(messages, this);
 		}
+		
+		private void cancelTimers() {
+			connectionTimer.cancel();
+			reconnectionTimer.cancel();
+			heartbeatTimer.cancel();
+		}
+		
+		private Timer createConnectionTimer() {
+			return new Timer() {
+				@Override
+				public void run() {
+					doDisconnect();
+					doOnError(new CometTimeoutException(url, connectionTimeout), false, CometClientTransportWrapper.this);
+				}
+			};
+		}
+		
+		private Timer createHeartbeatTimer() {
+			return new Timer() {
+				@Override
+				public void run() {
+					double currentTimeMillis = Duration.currentTimeMillis();
+					double difference = currentTimeMillis - lastReceivedTime;
+					if (difference >= heartbeatTimeout) {
+						doDisconnect();
+						doOnError(new CometException("Heartbeat failed"), false, CometClientTransportWrapper.this);
+					}
+					else {
+						// we have received a message since the timer was
+						// schedule so reschedule it.
+						schedule(heartbeatTimeout - (int) difference);
+					}
+				}
+			};
+		}
+		
+		private Timer createReconnectionTimer() {
+			return new Timer() {
+				@Override
+				public void run() {
+					if (running) {
+						doDisconnect();
+					}
+				}
+			};
+		}
+		
 	}
-
+	
+	// TODO precompile all regexps
 	public native static JsArrayString split(String string, String separator) /*-{
 		return string.split(separator);
 	}-*/;

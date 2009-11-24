@@ -28,7 +28,10 @@ import net.zschech.gwt.comet.server.CometServlet;
 import com.google.gwt.user.server.rpc.SerializationPolicy;
 
 public abstract class ManagedStreamCometServletResponseImpl extends CometServletResponseImpl {
+	
 	private CountOutputStream countOutputStream;
+	private boolean refresh;
+	
 	protected Integer padding;
 	protected Integer length;
 	
@@ -67,20 +70,32 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	@Override
 	public synchronized void write(List<? extends Serializable> messages, boolean flush) throws IOException {
 		super.write(messages, flush);
-		if (isOverMaxLength(countOutputStream.getCount())) {
-			terminate();
-		}
+		checkLength();
 	}
 	
 	@Override
 	public synchronized void heartbeat() throws IOException {
 		super.heartbeat();
-		if (isOverMaxLength(countOutputStream.getCount())) {
+		checkLength();
+	}
+	
+	private void checkLength() throws IOException {
+		int count = countOutputStream.getCount();
+		if (!refresh && isOverRefreshLength(count)) {
+			refresh = true;
+			System.out.println("- doRefresh " + this.hashCode());
+			doRefresh();
+		}
+		else if (isOverTerminateLength(count)) {
 			terminate();
 		}
 	}
 	
+	protected abstract void doRefresh() throws IOException;
+	
 	protected abstract CharSequence getPadding(int written);
 	
-	protected abstract boolean isOverMaxLength(int written);
+	protected abstract boolean isOverRefreshLength(int written);
+
+	protected abstract boolean isOverTerminateLength(int written);
 }

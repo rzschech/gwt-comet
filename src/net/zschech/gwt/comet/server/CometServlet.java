@@ -107,12 +107,22 @@ public abstract class CometServlet extends HttpServlet {
 		doCometImpl(cometServletResponse);
 	}
 	
-	private void doCometImpl(CometServletResponseImpl response) throws ServletException, IOException {
-		// setup the request
-		response.initiate();
-		
-		// call the application code
-		doComet(response);
+	private void doCometImpl(CometServletResponseImpl response) throws IOException {
+		try {
+			// setup the request
+			response.initiate();
+			
+			// call the application code
+			doComet(response);
+		}
+		catch (IOException e) {
+			log("Error calling doComet()", e);
+			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+		}
+		catch (ServletException e) {
+			log("Error calling doComet()", e);
+			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+		}
 		
 		// at this point the application may have spawned threads to process this response
 		// so we have to be careful about concurrency from here on
@@ -178,6 +188,7 @@ public abstract class CometServlet extends HttpServlet {
 	
 	/**
 	 * Utility to GWT serialize an object to a String.
+	 * 
 	 * @param message
 	 * @param serializationPolicy
 	 * @return the serialized message

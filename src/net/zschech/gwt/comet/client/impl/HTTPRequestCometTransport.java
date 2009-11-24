@@ -31,7 +31,7 @@ import com.google.gwt.user.client.rpc.SerializationException;
 import com.google.gwt.user.client.rpc.StatusCodeException;
 
 /**
- * This class uses a XmlHttpRequest and onreadystatechange events to process stream events.<br/>
+ * This class uses a XmlHttpRequest and onreadystatechange events to process stream events.
  * 
  * The main issue with this implementation is that GWT does not generate RECEIVING events from its XMLHTTPRequest. The
  * implementation of XMLHTTPRequest included in this package overrides that behaviour.
@@ -190,6 +190,9 @@ public class HTTPRequestCometTransport extends CometTransport {
 				break;
 			case '#':
 				listener.onHeartbeat();
+				break;
+			case '@':
+				listener.onRefresh();
 				break;
 			case '*':
 				// ignore padding

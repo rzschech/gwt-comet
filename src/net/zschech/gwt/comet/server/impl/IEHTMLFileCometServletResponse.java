@@ -118,16 +118,6 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	}
 	
 	@Override
-	protected boolean isOverMaxLength(int written) {
-		if (length != null) {
-			return written > length;
-		}
-		else {
-			return written > 4 * 1024 * 1024;
-		}
-	}
-	
-	@Override
 	protected void doHeartbeat() throws IOException {
 		writer.append("<script>h();</script>");
 	}
@@ -135,6 +125,26 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	@Override
 	protected void doTerminate() throws IOException {
 		writer.append("<script>parent.t();</script>");
+	}
+	
+	@Override
+	protected void doRefresh() throws IOException {
+		writer.append("<script>parent.r();</script>");
+	}
+	
+	@Override
+	protected boolean isOverRefreshLength(int written) {
+		if (length != null) {
+			return written > length;
+		}
+		else {
+			return written > 4 * 1024 * 1024;
+		}
+	}
+
+	@Override
+	protected boolean isOverTerminateLength(int written) {
+		return false;
 	}
 	
 	private static CharSequence escapeString(CharSequence string) {

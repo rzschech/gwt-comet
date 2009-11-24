@@ -159,6 +159,8 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	public synchronized void initiate() throws IOException {
+		System.out.println("- doInitiate " + this.hashCode());
+		
 		response.setHeader("Cache-Control", "no-cache");
 		response.setCharacterEncoding("UTF-8");
 		
@@ -191,25 +193,35 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 	}
 	
-	public void suspend() throws IOException {
-		CometSessionImpl s;
-		synchronized (this) {
-			if (terminated) {
-				return;
+	public void suspend() {
+		try {
+			CometSessionImpl s;
+			synchronized (this) {
+				if (terminated) {
+					return;
+				}
+				
+				System.out.println("- doSuspend " + this.hashCode());
+				doSuspend();
+				flush();
+				suspended = true;
+				s = session;
+				
+				// Don't hold onto the request while suspended as it takes up memory.
+				// Also Jetty and possibly other web servers reuse the HttpServletRequests so we can't assume they are still
+				// valid after they have been suspended
+				request = null;
 			}
 			
-			doSuspend();
-			flush();
-			suspended = true;
-			s = session;
-			
-			// Don't hold onto the request while suspended as it takes up memory.
-			// Also Jetty and possibly other web servers reuse the HttpServletRequests so we can't assume they are still
-			// valid after they have been suspended
-			request = null;
+			suspendInfo = async.suspend(this, s);
 		}
-		
-		suspendInfo = async.suspend(this, s);
+		catch (IOException e) {
+			servlet.log("Error suspending response", e);
+			synchronized (this) {
+				suspended = false;
+				setTerminated(false);
+			}
+		}
 	}
 	
 	public Object getSuspendInfo() {
@@ -219,6 +231,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	@Override
 	public synchronized void terminate() throws IOException {
 		if (!terminated) {
+			System.out.println("- doTerminate " + this.hashCode());
 			doTerminate();
 			flush();
 			setTerminated(true);
@@ -252,6 +265,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	@Override
 	public synchronized void write(List<? extends Serializable> messages, boolean flush) throws IOException {
 		try {
+			System.out.println("- doWrite " + this.hashCode());
 			doWrite(messages);
 			if (flush) {
 				flush();
@@ -259,7 +273,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			scheduleHeartbeat();
 		}
 		catch (IOException e) {
-			servlet.log("Error writing data", e);
 			setTerminated(false);
 			throw e;
 		}
@@ -269,6 +282,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	public synchronized void heartbeat() throws IOException {
 		if (!terminated) {
 			try {
+				System.out.println("- doHeartbeat " + this.hashCode());
 				doHeartbeat();
 				flush();
 				scheduleHeartbeat();

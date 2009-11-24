@@ -67,9 +67,7 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	
 	@Override
 	protected CharSequence getPadding(int written) {
-		String paddingParameter = getRequest().getParameter("padding");
-		if (paddingParameter != null) {
-			int padding = Integer.parseInt(paddingParameter);
+		if (padding != null) {
 			if (written < padding) {
 				StringBuilder result = new StringBuilder(padding - written);
 				for (int i = written; i < padding - 2; i++) {
@@ -136,7 +134,7 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	}
 	
 	@Override
-	protected boolean isOverMaxLength(int written) {
+	protected boolean isOverRefreshLength(int written) {
 		if (length != null) {
 			return written > length;
 		}
@@ -154,6 +152,11 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	}
 	
 	@Override
+	protected boolean isOverTerminateLength(int written) {
+		return false;
+	}
+	
+	@Override
 	protected void doHeartbeat() throws IOException {
 		writer.append("#\n");
 	}
@@ -161,6 +164,11 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	@Override
 	protected void doTerminate() throws IOException {
 		writer.append("?\n");
+	}
+	
+	@Override
+	protected void doRefresh() throws IOException {
+		writer.append("@\n");
 	}
 	
 	static CharSequence escape(CharSequence string) {
