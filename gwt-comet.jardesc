@@ -1,5 +1,5 @@
 <jardesc>
-    <jar path="gwt-comet/gwt-comet-1.0.6.jar"/>
+    <jar path="gwt-comet/gwt-comet-1.0.12.jar"/>
     <options buildIfNeeded="true" compress="true" descriptionLocation="/gwt-comet/gwt-comet.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="false" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
@@ -10,13 +10,13 @@
         </sealing>
     </manifest>
     <selectedElements exportClassFiles="true" exportJavaFiles="true" exportOutputFolder="false">
-        <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.rebind"/>
-        <javaElement handleIdentifier="=gwt-comet/src&lt;com.google.gwt.http.client"/>
-        <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.client.impl"/>
         <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet"/>
-        <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.server.impl"/>
         <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.client"/>
+        <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.client.impl"/>
         <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.server"/>
+        <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.server.impl"/>
+        <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.server.deflate"/>
+        <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.rebind"/>
     </selectedElements>
     <fatjar builder="org.eclipse.jdt.ui.plain_jar_builder" launchConfig=""/>
 </jardesc>

@@ -33,13 +33,17 @@ public abstract class AsyncServlet {
 			if (async == null) {
 				String server;
 				String serverInfo = context.getServerInfo();
-				if (serverInfo.startsWith("jetty-")) {
+				if (serverInfo.startsWith("jetty-") || serverInfo.startsWith("jetty/")) {
 					// e.g. jetty-6.1.x
 					server = "Jetty";
 				}
-				else if (serverInfo.startsWith("Apache Tomcat/")) {
+				else if (serverInfo.startsWith("Apache Tomcat/5.5.")) {
+					// e.g. Apache Tomcat/5.5.26
+					server = "Catalina55";
+				}
+				else if (serverInfo.startsWith("Apache Tomcat/6.")) {
 					// e.g. Apache Tomcat/6.0.18
-					server = "Catalina";
+					server = "Catalina60";
 				}
 				else {
 					server = null;
@@ -50,7 +54,7 @@ public abstract class AsyncServlet {
 					try {
 						async = (AsyncServlet) Class.forName("net.zschech.gwt.comet.server.impl." + server + "AsyncServlet").newInstance();
 					}
-					catch (Exception e) {
+					catch (Throwable e) {
 						context.log("Error creating " + server + " async servlet handler for server " + serverInfo + ". Falling back to default blocking async servlet handler.", e);
 						async = new BlockingAsyncServlet();
 					}
