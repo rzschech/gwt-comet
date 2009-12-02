@@ -44,7 +44,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	
 	private ScheduledExecutorService executor;
 	
-	public static String BATCH_SIZE = "net.zschech.gwt.comet.server.batch.size";
+	public static final String BATCH_SIZE = "net.zschech.gwt.comet.server.batch.size";
 	
 	private int batchSize = 10;
 	

@@ -83,6 +83,16 @@ public class RemoveOnCancelScheduledThreadPoolExecutor extends ScheduledThreadPo
 		}
 		
 		@Override
+		public boolean equals(Object obj) {
+			return wrap.equals(((WrapScheduledFuture) o).wrap);
+		}
+		
+		@Override
+		public int hashCode() {
+			return wrap.hashCode();
+		}
+		
+		@Override
 		public long getDelay(TimeUnit unit) {
 			return wrap.getDelay(unit);
 		}
