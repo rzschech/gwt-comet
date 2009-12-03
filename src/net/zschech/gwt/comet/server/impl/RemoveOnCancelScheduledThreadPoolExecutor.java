@@ -82,9 +82,13 @@ public class RemoveOnCancelScheduledThreadPoolExecutor extends ScheduledThreadPo
 			this.wrap = wrap;
 		}
 		
+		@SuppressWarnings("unchecked")
 		@Override
-		public boolean equals(Object obj) {
-			return wrap.equals(((WrapScheduledFuture) o).wrap);
+		public boolean equals(Object o) {
+			if (o.getClass() != WrapScheduledFuture.class) {
+				return false;
+			}
+			return wrap.equals(((WrapScheduledFuture<V>) o).wrap);
 		}
 		
 		@Override
