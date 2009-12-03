@@ -33,8 +33,8 @@ import javax.servlet.http.HttpSession;
 /**
  * This AsyncServlet implementation blocks the HTTP request processing thread.
  * 
- * It does not generate notifications for client disconnection and therefore
- * must wait for a heartbeat send attempt to detect client disconnection :-(
+ * It does not generate notifications for client disconnection and therefore must wait for a heartbeat send attempt to
+ * detect client disconnection :-(
  * 
  * @author Richard Zschech
  */
@@ -71,6 +71,11 @@ public class BlockingAsyncServlet extends AsyncServlet {
 				throw new ServletException("Invalid " + BATCH_SIZE + " value: " + batchSizeString);
 			}
 		}
+	}
+	
+	@Override
+	protected void shutdown() {
+		executor.shutdown();
 	}
 	
 	@Override
@@ -182,22 +187,31 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	
 	@Override
 	public ScheduledFuture<?> scheduleSessionKeepAlive(final CometServletResponseImpl response, final CometSessionImpl session) {
-		long keepAliveTime = getKeepAliveTime(session);
-		if (keepAliveTime <= 0) {
+		try {
+			long keepAliveTime = getKeepAliveTime(session);
+			if (keepAliveTime <= 0) {
+				response.tryTerminate();
+				return null;
+			}
+			else {
+				return executor.schedule(new Runnable() {
+					@Override
+					public void run() {
+						synchronized (response) {
+							response.scheduleSessionKeepAlive();
+						}
+					}
+				}, keepAliveTime, TimeUnit.MILLISECONDS);
+			}
+		}
+		catch (IllegalStateException e) {
+			// the session has been invalidated
 			response.tryTerminate();
 			return null;
 		}
-		else {
-			return executor.schedule(new Runnable() {
-				@Override
-				public void run() {
-					response.scheduleSessionKeepAlive();
-				}
-			}, keepAliveTime, TimeUnit.MILLISECONDS);
-		}
 	}
 	
-	private long getKeepAliveTime(CometSessionImpl session) {
+	private long getKeepAliveTime(CometSessionImpl session) throws IllegalStateException {
 		HttpSession httpSession = session.getHttpSession();
 		long lastAccessedTime = Math.max(session.getLastAccessedTime(), httpSession.getLastAccessedTime());
 		return (httpSession.getMaxInactiveInterval() * 1000) - (System.currentTimeMillis() - lastAccessedTime) - SESSION_KEEP_ALIVE_BUFFER;

@@ -68,7 +68,7 @@ public abstract class CometServlet extends HttpServlet {
 		if (heartbeat != null) {
 			this.heartbeat = Integer.parseInt(heartbeat);
 		}
-		async = AsyncServlet.create(getServletContext());
+		async = AsyncServlet.initialize(getServletContext());
 	}
 	
 	@Override
@@ -218,7 +218,7 @@ public abstract class CometServlet extends HttpServlet {
 			CometSessionImpl session = (CometSessionImpl) httpSession.getAttribute(CometSession.HTTP_SESSION_KEY);
 			if (session == null) {
 				if (create) {
-					session = new CometSessionImpl(httpSession, queue, AsyncServlet.create(httpSession.getServletContext()));
+					session = new CometSessionImpl(httpSession, queue, AsyncServlet.initialize(httpSession.getServletContext()));
 					httpSession.setAttribute(CometSession.HTTP_SESSION_KEY, session);
 				}
 			}

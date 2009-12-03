@@ -17,6 +17,7 @@ package net.zschech.gwt.comet.server.impl;
 
 import java.io.Serializable;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.servlet.http.HttpSession;
@@ -28,78 +29,89 @@ public class CometSessionImpl implements CometSession {
 	private final HttpSession httpSession;
 	private final Queue<Serializable> queue;
 	private final AsyncServlet async;
+	private final AtomicBoolean valid;
 	private final AtomicReference<CometServletResponseImpl> response;
-	private volatile boolean valid;
 	private volatile long lastAccessedTime;
 	
 	public CometSessionImpl(HttpSession httpSession, Queue<Serializable> queue, AsyncServlet async) {
 		this.httpSession = httpSession;
 		this.queue = queue;
 		this.async = async;
+		this.valid = new AtomicBoolean(true);
 		this.response = new AtomicReference<CometServletResponseImpl>();
-		this.valid = true;
+	}
+	
+	private void ensureValid() {
+		if (!valid.get()) {
+			throw new IllegalStateException("CometSession has been invalidated");
+		}
+	}
+	
+	@Override
+	public HttpSession getHttpSession() {
+		ensureValid();
+		return httpSession;
 	}
 	
 	@Override
 	public void enqueue(Serializable message) {
+		ensureValid();
 		queue.add(message);
-		enqueued();
+		async.enqueued(this);
 	}
 	
 	@Override
 	public void enqueued() {
+		ensureValid();
 		async.enqueued(this);
 	}
 	
 	@Override
 	public Queue<? extends Serializable> getQueue() {
+		ensureValid();
 		return queue;
 	}
 	
 	@Override
 	public void invalidate() {
-		valid = false;
-		async.invalidate(this);
-		try {
-			httpSession.removeAttribute(HTTP_SESSION_KEY);
-		}
-		catch (IllegalStateException e) {
-			// HttpSession already invalidated
-		}
-		
-		CometServletResponseImpl prevResponse = response.getAndSet(null);
-		if (prevResponse != null) {
-			prevResponse.tryTerminate();
+		if (valid.compareAndSet(true, false)) {
+			async.invalidate(this);
+			try {
+				httpSession.removeAttribute(HTTP_SESSION_KEY);
+			}
+			catch (IllegalStateException e) {
+				// HttpSession already invalidated
+			}
+			
+			CometServletResponseImpl prevResponse = response.getAndSet(null);
+			if (prevResponse != null) {
+				prevResponse.tryTerminate();
+			}
 		}
 	}
 	
 	@Override
 	public boolean isValid() {
-		return valid;
+		return valid.get();
 	}
 	
-	@Override
-	public HttpSession getHttpSession() {
-		return httpSession;
-	}
-	
-	public CometServletResponseImpl setResponse(CometServletResponseImpl response) {
+	CometServletResponseImpl setResponse(CometServletResponseImpl response) {
 		return this.response.getAndSet(response);
 	}
 	
-	public boolean clearResponse(CometServletResponseImpl response) {
+	boolean clearResponse(CometServletResponseImpl response) {
 		return this.response.compareAndSet(response, null);
 	}
 	
-	public CometServletResponseImpl getResponse() {
+	CometServletResponseImpl getResponse() {
 		return response.get();
 	}
 	
-	public void setLastAccessedTime(long lastAccessedTime) {
+	void setLastAccessedTime(long lastAccessedTime) {
 		this.lastAccessedTime = lastAccessedTime;
 	}
 	
-	public long getLastAccessedTime() {
+	long getLastAccessedTime() {
 		return lastAccessedTime;
 	}
 }

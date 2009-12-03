@@ -9,7 +9,12 @@ public abstract class SessionAccessAsyncServlet extends BlockingAsyncServlet {
 	@Override
 	public ScheduledFuture<?> scheduleHeartbeat(CometServletResponseImpl response, CometSessionImpl session) {
 		if (session != null) {
-			access(session.getHttpSession());
+			try {
+				access(session.getHttpSession());
+			}
+			catch (IllegalStateException e) {
+				// the session has been invalidated
+			}
 		}
 		return super.scheduleHeartbeat(response, session);
 	}

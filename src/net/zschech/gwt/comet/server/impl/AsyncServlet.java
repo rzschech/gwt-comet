@@ -27,7 +27,7 @@ public abstract class AsyncServlet {
 	
 	public static final String SERVLET_CONTEXT_KEY = "net.zschech.gwt.comet.server.AsyncServlet";
 	
-	public static AsyncServlet create(ServletContext context) {
+	public static AsyncServlet initialize(ServletContext context) {
 		synchronized (context) {
 			AsyncServlet async = (AsyncServlet) context.getAttribute(SERVLET_CONTEXT_KEY);
 			if (async == null) {
@@ -76,10 +76,22 @@ public abstract class AsyncServlet {
 		}
 	}
 	
+	public static void destroy(ServletContext context) {
+		synchronized (context) {
+			AsyncServlet async = (AsyncServlet) context.getAttribute(SERVLET_CONTEXT_KEY);
+			if (async != null) {
+				async.shutdown();
+			}
+		}
+	}
+	
 	private ServletContext context;
 	
-	public void init(ServletContext context) throws ServletException {
+	protected void init(ServletContext context) throws ServletException {
 		this.context = context;
+	}
+	
+	protected void shutdown() {
 	}
 	
 	protected ServletContext getServletContext() {

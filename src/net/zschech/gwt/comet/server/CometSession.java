@@ -28,7 +28,17 @@ import javax.servlet.http.HttpSession;
  */
 public interface CometSession {
 	
+	/**
+	 * The key for the HttpSession to look up the CometSession attribute 
+	 */
 	public static final String HTTP_SESSION_KEY = "net.zschech.gwt.comet.server.CometSession";
+	
+	/**
+	 * @return the associated HTTP session
+	 * @exception IllegalStateException
+	 *                if this method is called on an invalidated session
+	 */
+	public HttpSession getHttpSession() throws IllegalStateException;
 	
 	/**
 	 * Enqueues a message. This is equivalent to:
@@ -39,26 +49,34 @@ public interface CometSession {
 	 * </code>
 	 * 
 	 * @param message
+	 * @exception IllegalStateException
+	 *                if this method is called on an invalidated session
 	 */
-	public void enqueue(Serializable message);
+	public void enqueue(Serializable message) throws IllegalStateException;
 	
 	/**
 	 * Call to notify the comet session that a message has been enqueued by other means than
 	 * {@link CometSession#enqueue(Serializable)}.
+	 * 
+	 * @exception IllegalStateException
+	 *                if this method is called on an invalidated session
 	 */
-	public void enqueued();
+	public void enqueued() throws IllegalStateException;
 	
 	/**
 	 * @return the message queue
+	 * @exception IllegalStateException
+	 *                if this method is called on an invalidated session
 	 */
-	public Queue<? extends Serializable> getQueue();
-	
-	public void invalidate();
-	
-	public boolean isValid();
+	public Queue<? extends Serializable> getQueue() throws IllegalStateException;
 	
 	/**
-	 * @return the associated HTTP session
+	 * Invalidates the comet session
 	 */
-	public HttpSession getHttpSession();
+	public void invalidate();
+	
+	/**
+	 * @return if the comet session is valid
+	 */
+	public boolean isValid();
 }
