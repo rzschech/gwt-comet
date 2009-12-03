@@ -147,15 +147,19 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		if (suspended) {
 			throw new IllegalStateException("sendError can not be accessed after the CometServletResponse has been suspended.");
 		}
-		getResponse().reset();
-		response.setHeader("Cache-Control", "no-cache");
-		response.setCharacterEncoding("UTF-8");
-		
-		OutputStream outputStream = response.getOutputStream();
-		writer = new OutputStreamWriter(outputStream, "UTF-8");
-		
-		doSendError(statusCode, message);
-		setTerminated(true);
+		try {
+			getResponse().reset();
+			response.setHeader("Cache-Control", "no-cache");
+			response.setCharacterEncoding("UTF-8");
+			
+			OutputStream outputStream = response.getOutputStream();
+			writer = new OutputStreamWriter(outputStream, "UTF-8");
+			
+			doSendError(statusCode, message);
+		}
+		finally {
+			setTerminated(true);
+		}
 	}
 	
 	public synchronized void initiate() throws IOException {
@@ -201,6 +205,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 					return;
 				}
 				
+				// TODO send the data in the comet queue before suspending it
 				System.out.println("- doSuspend " + this.hashCode());
 				doSuspend();
 				flush();
@@ -232,9 +237,13 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	public synchronized void terminate() throws IOException {
 		if (!terminated) {
 			System.out.println("- doTerminate " + this.hashCode());
-			doTerminate();
-			flush();
-			setTerminated(true);
+			try {
+				doTerminate();
+				flush();
+			}
+			finally {
+				setTerminated(true);
+			}
 		}
 	}
 	
