@@ -273,6 +273,9 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	
 	@Override
 	public synchronized void write(List<? extends Serializable> messages, boolean flush) throws IOException {
+		if (terminated) {
+			throw new IOException("CometServletResponse terminated");
+		}
 		try {
 			System.out.println("- doWrite " + this.hashCode());
 			doWrite(messages);
