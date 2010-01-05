@@ -211,16 +211,6 @@ public class CometServlet extends HttpServlet {
 			return null;
 		}
 		
-		String moduleBase = request.getParameter(CometTransport.MODULE_BASE_PARAMETER);
-		if (moduleBase == null) {
-			return null;
-		}
-		
-		String basePath = new URL(moduleBase).getPath();
-		if (basePath == null) {
-			throw new MalformedURLException("Blocked request without GWT base path header (XSRF attack?)");
-		}
-		
 		ClientOracle toReturn;
 		synchronized (clientOracleCache) {
 			if (clientOracleCache.containsKey(permutationStrongName)) {
@@ -237,6 +227,22 @@ public class CometServlet extends HttpServlet {
 				toReturn = new HostedModeClientOracle();
 			}
 			else {
+				String moduleBase = request.getParameter(CometTransport.MODULE_BASE_PARAMETER);
+				if (moduleBase == null) {
+					return null;
+				}
+				
+				String basePath = new URL(moduleBase).getPath();
+				if (basePath == null) {
+					throw new MalformedURLException("Blocked request without GWT base path parameter (XSRF attack?)");
+				}
+				
+				String contextPath = getServletContext().getContextPath();
+				if (!basePath.startsWith(contextPath)) {
+					throw new MalformedURLException("Blocked request with invalid GWT base path parameter (XSRF attack?)");
+				}
+				basePath = basePath.substring(contextPath.length());
+				
 				InputStream in = findClientOracleData(basePath, permutationStrongName);
 				
 				toReturn = WebModeClientOracle.load(in);
