@@ -42,46 +42,46 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  */
 public class OperaEventSourceCometTransport extends CometTransport {
 	
-	private Element eventsource;
+	private Element eventSource;
 	
 	@Override
 	public void initiate(CometClient client, CometListener listener) {
 		super.initiate(client, listener);
-		eventsource = createEventSource(this);
+		eventSource = createEventSource(this);
 	}
 	
 	@Override
 	public void connect() {
-		DOM.setElementAttribute(eventsource, "src", getUrl());
+		DOM.setElementAttribute(eventSource, "src", getUrl());
 	}
 	
 	@Override
 	public void disconnect() {
-		DOM.setElementAttribute(eventsource, "src", "");
+		DOM.setElementAttribute(eventSource, "src", "");
 	}
 	
 	private static native Element createEventSource(OperaEventSourceCometTransport client) /*-{
-		var eventsource = document.createElement("event-source");
+		var eventSource = document.createElement("event-source");
 
-		var messagehandler = function(event) {
+		var stringMessageHandler = function(event) {
 			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onString(Ljava/lang/String;)(event.data);
 		};
 
-		eventsource.addEventListener("s", messagehandler, false);
+		eventSource.addEventListener("s", stringMessageHandler, false);
 
-		var messagehandler = function(event) {
+		var objectMessageHandler = function(event) {
 			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onObject(Ljava/lang/String;)(event.data);
 		};
 
-		eventsource.addEventListener("o", messagehandler, false);
+		eventSource.addEventListener("o", objectMessageHandler, false);
 
-		var connectionhandler = function(event) {
+		var connectionHandler = function(event) {
 			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onConnection(Ljava/lang/String;)(event.data);
 		};
 
-		eventsource.addEventListener("c", connectionhandler, false);
+		eventSource.addEventListener("c", connectionHandler, false);
 
-		return eventsource;
+		return eventSource;
 	}-*/;
 	
 	@SuppressWarnings("unused")

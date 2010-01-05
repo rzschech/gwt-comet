@@ -25,6 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import net.zschech.gwt.comet.server.CometServlet;
 
+import com.google.gwt.rpc.server.ClientOracle;
 import com.google.gwt.user.server.rpc.SerializationPolicy;
 
 public abstract class ManagedStreamCometServletResponseImpl extends CometServletResponseImpl {
@@ -35,8 +36,8 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	protected Integer padding;
 	protected Integer length;
 	
-	public ManagedStreamCometServletResponseImpl(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, CometServlet servlet, AsyncServlet async, int heartbeat) {
-		super(request, response, serializationPolicy, servlet, async, heartbeat);
+	public ManagedStreamCometServletResponseImpl(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
+		super(request, response, serializationPolicy, clientOracle, servlet, async, heartbeat);
 	}
 	
 	@Override
@@ -83,7 +84,6 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 		int count = countOutputStream.getCount();
 		if (!refresh && isOverRefreshLength(count)) {
 			refresh = true;
-			System.out.println("- doRefresh " + this.hashCode());
 			doRefresh();
 		}
 		else if (isOverTerminateLength(count)) {

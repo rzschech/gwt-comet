@@ -24,6 +24,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import net.zschech.gwt.comet.server.CometServlet;
 
+import com.google.gwt.rpc.server.ClientOracle;
 import com.google.gwt.user.server.rpc.SerializationPolicy;
 
 /**
@@ -50,8 +51,8 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 		PADDING_STRING = new String(padding);
 	}
 	
-	public IEHTMLFileCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, CometServlet servlet, AsyncServlet async, int heartbeat) {
-		super(request, response, serializationPolicy, servlet, async, heartbeat);
+	public IEHTMLFileCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
+		super(request, response, serializationPolicy, clientOracle, servlet, async, heartbeat);
 	}
 	
 	@Override

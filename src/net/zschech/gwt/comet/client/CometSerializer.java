@@ -17,7 +17,9 @@ package net.zschech.gwt.comet.client;
 
 import java.io.Serializable;
 
+import com.google.gwt.rpc.client.impl.ClientWriterFactory;
 import com.google.gwt.user.client.rpc.SerializationException;
+import com.google.gwt.user.client.rpc.SerializationStreamReader;
 import com.google.gwt.user.client.rpc.impl.ClientSerializationStreamReader;
 import com.google.gwt.user.client.rpc.impl.Serializer;
 
@@ -40,16 +42,29 @@ public abstract class CometSerializer {
 	
 	@SuppressWarnings("unchecked")
 	public <T extends Serializable> T parse(String message) throws SerializationException {
-		Serializer serializer = getSerializer();
-		try {
-			ClientSerializationStreamReader reader = new ClientSerializationStreamReader(serializer);
-			reader.prepareToRead(message);
-			return (T) reader.readObject();
+		if (getMode() == SerialMode.RPC) {
+			try {
+				Serializer serializer = getSerializer();
+				ClientSerializationStreamReader reader = new ClientSerializationStreamReader(serializer);
+				reader.prepareToRead(message);
+				return (T) reader.readObject();
+			}
+			catch (RuntimeException e) {
+				throw new SerializationException(e);
+			}
 		}
-		catch (RuntimeException e) {
-			throw new SerializationException(e);
+		else {
+			try {
+				SerializationStreamReader reader = ClientWriterFactory.createReader(message);
+				return (T) reader.readObject();
+			}
+			catch (RuntimeException e) {
+				throw new SerializationException(e);
+			}
 		}
 	}
 	
 	protected abstract Serializer getSerializer();
+	
+	public abstract SerialMode getMode();
 }

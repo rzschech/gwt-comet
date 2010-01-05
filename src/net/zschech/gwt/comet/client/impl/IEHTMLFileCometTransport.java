@@ -48,6 +48,8 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  * e(error) An error message with the error code
  * 
  * h() A heartbeat message
+ *
+ * r() A refresh message
  * 
  * s(string) A string message
  * 

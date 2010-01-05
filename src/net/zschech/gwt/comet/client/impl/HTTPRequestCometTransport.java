@@ -23,12 +23,14 @@ import net.zschech.gwt.comet.client.CometClient;
 import net.zschech.gwt.comet.client.CometException;
 import net.zschech.gwt.comet.client.CometSerializer;
 
-import com.google.gwt.core.client.JavaScriptObject;
+import com.google.gwt.core.client.JavaScriptException;
 import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
 import com.google.gwt.user.client.rpc.SerializationException;
 import com.google.gwt.user.client.rpc.StatusCodeException;
+import com.google.gwt.xhr.client.ReadyStateChangeHandler;
+import com.google.gwt.xhr.client.XMLHttpRequest;
 
 /**
  * This class uses a XmlHttpRequest and onreadystatechange events to process stream events.
@@ -56,6 +58,8 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  * 
  * [ A GWT serialized object
  * 
+ * R, r or f A GWT deRPC object
+ * 
  * string messages are escaped for '\\' and '\n' characters as '\n' is the message separator.
  * 
  * GWT serialized object messages are escaped by GWT so do not need to be escaped by the transport
@@ -65,7 +69,7 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
 public class HTTPRequestCometTransport extends CometTransport {
 	
 	private static final String SEPARATOR = "\n";
-	private JavaScriptObject xmlHttpRequest;
+	private XMLHttpRequest xmlHttpRequest;
 	private boolean expectingDisconnection;
 	private int read;
 	
@@ -74,60 +78,47 @@ public class HTTPRequestCometTransport extends CometTransport {
 		expectingDisconnection = false;
 		read = 0;
 		
-		xmlHttpRequest = createXMLHttpRequest();
-		String sendError = connect(xmlHttpRequest, getUrl(), this);
-		if (sendError != null) {
+		xmlHttpRequest = XMLHttpRequest.create();
+		try {
+			xmlHttpRequest.open("GET", getUrl());
+			xmlHttpRequest.setRequestHeader("Accept", "text/plain");
+			xmlHttpRequest.setRequestHeader("Cache-Control", "no-cache");
+			xmlHttpRequest.setOnReadyStateChange(new ReadyStateChangeHandler() {
+				@Override
+				public void onReadyStateChange(XMLHttpRequest request) {
+					switch (request.getReadyState()) {
+					case XMLHttpRequest.LOADING:
+						onReceiving(request.getStatus(), request.getResponseText());
+						break;
+					case XMLHttpRequest.DONE:
+						onLoaded(request.getStatus(), request.getResponseText());
+						break;
+					}
+				}
+			});
+			xmlHttpRequest.send();
+		}
+		catch (JavaScriptException e) {
 			xmlHttpRequest = null;
-			listener.onError(new RequestException(sendError), false);
+			listener.onError(new RequestException(e.getMessage()), false);
 		}
 	}
 	
-	private native JavaScriptObject createXMLHttpRequest() /*-{
-		return new XMLHttpRequest();
-	}-*/;
-	
-	private native String connect(JavaScriptObject xmlHttpRequest, String url, HTTPRequestCometTransport transport) /*-{
-		try {
-			xmlHttpRequest.open("GET", url, true);
-			xmlHttpRequest.setRequestHeader("Accept", "text/plain");
-			xmlHttpRequest.setRequestHeader("Cache-Control", "no-cache");
-			xmlHttpRequest.onreadystatechange = function() {
-				var readyState = xmlHttpRequest.readyState;
-				if (readyState == @com.google.gwt.http.client.XMLHTTPRequest::LOADED) {
-					xmlHttpRequest.onreadystatechange = null;
-					transport.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::onLoaded(ILjava/lang/String;)(xmlHttpRequest.status, xmlHttpRequest.responseText);
-				}
-				else if (readyState == @com.google.gwt.http.client.XMLHTTPRequest::RECEIVING) {
-					// IE does not support getting the response text so we check to make hosted mode debugging easier
-					if (typeof xmlHttpRequest.responseText != 'unknown') {
-						transport.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::onReceiving(ILjava/lang/String;)(xmlHttpRequest.status, xmlHttpRequest.responseText);
-					}
-				}
-			};
-			xmlHttpRequest.send(null);
-			return null;
-		}
-		catch (e) {
-			return e.message || e.toString();
-		}
-	}-*/;
-	
 	@Override
-	public native void disconnect() /*-{
-		if (this.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::xmlHttpRequest != null) {
-			this.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::xmlHttpRequest.onreadystatechange = null;
-			this.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::xmlHttpRequest.abort();
-			this.@net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport::xmlHttpRequest = null;
+	public void disconnect() {
+		if (xmlHttpRequest != null) {
+			xmlHttpRequest.clearOnReadyStateChange();
+			xmlHttpRequest.abort();
+			xmlHttpRequest = null;
 		}
-	}-*/;
+	}
 	
-	@SuppressWarnings("unused")
 	private void onLoaded(int statusCode, String responseText) {
+		xmlHttpRequest.clearOnReadyStateChange();
 		xmlHttpRequest = null;
 		onReceiving(statusCode, responseText, false);
 	}
 	
-	@SuppressWarnings("unused")
 	private void onReceiving(int statusCode, String responseText) {
 		onReceiving(statusCode, responseText, true);
 	}
@@ -204,6 +195,9 @@ public class HTTPRequestCometTransport extends CometTransport {
 				messages.add(unescape(message.substring(1)));
 				break;
 			case '[':
+			case 'R':
+			case 'r':
+			case 'f':
 				CometSerializer serializer = client.getSerializer();
 				if (serializer == null) {
 					listener.onError(new SerializationException("Can not deserialize message with no serializer: " + message), true);

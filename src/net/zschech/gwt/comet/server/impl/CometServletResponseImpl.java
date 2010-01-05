@@ -15,12 +15,14 @@
  */
 package net.zschech.gwt.comet.server.impl;
 
+import java.io.ByteArrayOutputStream;
 import java.io.Flushable;
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.util.Collections;
 import java.util.List;
@@ -36,8 +38,11 @@ import net.zschech.gwt.comet.server.CometServletResponse;
 import net.zschech.gwt.comet.server.CometSession;
 import net.zschech.gwt.comet.server.deflate.DeflaterOutputStream;
 
+import com.google.gwt.rpc.server.ClientOracle;
+import com.google.gwt.rpc.server.RPC;
 import com.google.gwt.user.client.rpc.SerializationException;
 import com.google.gwt.user.server.rpc.SerializationPolicy;
+import com.google.gwt.user.server.rpc.impl.ServerSerializationStreamWriter;
 
 public abstract class CometServletResponseImpl implements CometServletResponse {
 	
@@ -46,6 +51,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	private CometSessionImpl session;
 	
 	private final SerializationPolicy serializationPolicy;
+	private final ClientOracle clientOracle;
 	private final CometServlet servlet;
 	private final AsyncServlet async;
 	private final int heartbeat;
@@ -60,10 +66,11 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	private ScheduledFuture<?> heartbeatFuture;
 	private ScheduledFuture<?> sessionKeepAliveFuture;
 	
-	protected CometServletResponseImpl(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, CometServlet servlet, AsyncServlet async, int heartbeat) {
+	protected CometServletResponseImpl(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
 		this.request = request;
 		this.response = response;
 		this.serializationPolicy = serializationPolicy;
+		this.clientOracle = clientOracle;
 		this.servlet = servlet;
 		this.async = async;
 		this.heartbeat = heartbeat;
@@ -81,6 +88,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	
 	protected OutputStream getOutputStream(OutputStream outputStream) {
 		return outputStream;
+	}
+	
+	protected boolean isDeRPC() {
+		return clientOracle != null;
 	}
 	
 	@Override
@@ -163,8 +174,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	public synchronized void initiate() throws IOException {
-		System.out.println("- doInitiate " + this.hashCode());
-		
 		response.setHeader("Cache-Control", "no-cache");
 		response.setCharacterEncoding("UTF-8");
 		
@@ -206,7 +215,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 				}
 				
 				// TODO send the data in the comet queue before suspending it
-				System.out.println("- doSuspend " + this.hashCode());
 				doSuspend();
 				flush();
 				suspended = true;
@@ -236,7 +244,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	@Override
 	public synchronized void terminate() throws IOException {
 		if (!terminated) {
-			System.out.println("- doTerminate " + this.hashCode());
 			try {
 				doTerminate();
 				flush();
@@ -277,7 +284,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			throw new IOException("CometServletResponse terminated");
 		}
 		try {
-			System.out.println("- doWrite " + this.hashCode());
 			doWrite(messages);
 			if (flush) {
 				flush();
@@ -294,7 +300,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	public synchronized void heartbeat() throws IOException {
 		if (!terminated) {
 			try {
-				System.out.println("- doHeartbeat " + this.hashCode());
 				doHeartbeat();
 				flush();
 				scheduleHeartbeat();
@@ -365,9 +370,19 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	
 	protected abstract void doTerminate() throws IOException;
 	
-	protected String serialize(Serializable message) throws NotSerializableException {
+	protected String serialize(Serializable message) throws NotSerializableException, UnsupportedEncodingException {
 		try {
-			return CometServlet.serialize(message, serializationPolicy);
+			if (clientOracle == null) {
+				ServerSerializationStreamWriter streamWriter = new ServerSerializationStreamWriter(serializationPolicy);
+				streamWriter.prepareToWrite();
+				streamWriter.writeObject(message);
+				return streamWriter.toString();
+			}
+			else {
+				ByteArrayOutputStream result = new ByteArrayOutputStream();
+				RPC.streamResponseForSuccess(clientOracle, result, message);
+				return new String(result.toByteArray(), "UTF-8");
+			}
 		}
 		catch (SerializationException e) {
 			throw new NotSerializableException("Unable to serialize object, message: " + e.getMessage());

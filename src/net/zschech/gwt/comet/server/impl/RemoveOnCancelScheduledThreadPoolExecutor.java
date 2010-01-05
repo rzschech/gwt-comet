@@ -82,20 +82,38 @@ public class RemoveOnCancelScheduledThreadPoolExecutor extends ScheduledThreadPo
 			this.wrap = wrap;
 		}
 		
-		@SuppressWarnings("unchecked")
-		@Override
-		public boolean equals(Object o) {
-			if (o.getClass() != WrapScheduledFuture.class) {
-				return false;
-			}
-			return wrap.equals(((WrapScheduledFuture<V>) o).wrap);
-		}
-		
 		@Override
 		public int hashCode() {
-			return wrap.hashCode();
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((wrap == null) ? 0 : wrap.hashCode());
+			return result;
 		}
-		
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+			WrapScheduledFuture other = (WrapScheduledFuture) obj;
+			if (wrap == null) {
+				if (other.wrap != null) {
+					return false;
+				}
+			}
+			else if (!wrap.equals(other.wrap)) {
+				return false;
+			}
+			return true;
+		}
+
 		@Override
 		public long getDelay(TimeUnit unit) {
 			return wrap.getDelay(unit);

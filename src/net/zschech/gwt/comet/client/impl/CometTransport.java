@@ -17,8 +17,10 @@ package net.zschech.gwt.comet.client.impl;
 
 import net.zschech.gwt.comet.client.CometClient;
 import net.zschech.gwt.comet.client.CometListener;
+import net.zschech.gwt.comet.client.SerialMode;
 
 import com.google.gwt.core.client.Duration;
+import com.google.gwt.core.client.GWT;
 
 /**
  * This is the base class for the comet implementations
@@ -26,6 +28,9 @@ import com.google.gwt.core.client.Duration;
  * @author Richard Zschech
  */
 public abstract class CometTransport {
+	
+	public static final String MODULE_BASE_PARAMETER = "base";
+	public static final String STRONG_NAME_PARAMETER = "perm";
 	
 	protected CometClient client;
 	protected CometListener listener;
@@ -41,6 +46,9 @@ public abstract class CometTransport {
 	
 	public String getUrl() {
 		String url = client.getUrl();
-		return url + (url.contains("?") ? "&" : "?") + Integer.toString((int)(Duration.currentTimeMillis() % Integer.MAX_VALUE), Character.MAX_RADIX).toUpperCase();
+		if (client.getSerializer() != null && client.getSerializer().getMode() == SerialMode.DE_RPC) {
+			url += (url.contains("?") ? "&" : "?") + MODULE_BASE_PARAMETER + '=' + GWT.getModuleBaseURL() + '&' + STRONG_NAME_PARAMETER + '=' + GWT.getPermutationStrongName();
+		}
+		return url + (url.contains("?") ? "&" : "?") + "stamp=" + Integer.toString((int) (Duration.currentTimeMillis() % Integer.MAX_VALUE), Character.MAX_RADIX).toUpperCase();
 	}
 }

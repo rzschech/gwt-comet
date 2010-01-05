@@ -21,6 +21,7 @@ import java.util.List;
 import net.zschech.gwt.comet.client.CometClient;
 import net.zschech.gwt.comet.client.CometListener;
 import net.zschech.gwt.comet.client.CometSerializer;
+import net.zschech.gwt.comet.client.SerialMode;
 import net.zschech.gwt.comet.client.SerialTypes;
 
 import com.google.gwt.core.client.Duration;
@@ -43,7 +44,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		GWT.setUncaughtExceptionHandler(new GWT.UncaughtExceptionHandler() {
 			@Override
 			public void onUncaughtException(Throwable e) {
-				log(e.toString());
+				log(string(e));
 				e.printStackTrace();
 			}
 		});
@@ -69,10 +70,17 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 		}));
 
-		RootPanel.get().add(new Button("Serialize", new ClickHandler() {
+		RootPanel.get().add(new Button("RPC Serialize", new ClickHandler() {
 			@Override
 			public void onClick(ClickEvent event) {
-				serializeTest();
+				rpcSerializeTest();
+			}
+		}));
+		
+		RootPanel.get().add(new Button("DE_RPC Serialize", new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				derpcSerializeTest();
 			}
 		}));
 		
@@ -97,10 +105,17 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 		}));
 		
-		RootPanel.get().add(new Button("Escape", new ClickHandler() {
+		RootPanel.get().add(new Button("RPC Escape", new ClickHandler() {
 			@Override
 			public void onClick(ClickEvent event) {
-				escapeTest();
+				rpcEscapeTest();
+			}
+		}));
+		
+		RootPanel.get().add(new Button("DE_RPC Escape", new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent event) {
+				derpcEscapeTest();
 			}
 		}));
 		
@@ -125,7 +140,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			cometClient = null;
 		}
 	}
-	
+	//ch 20.8 11.34
 	private void start(String url, CometListener listener) {
 		start(url, null, listener);
 	}
@@ -170,18 +185,22 @@ public class CometTestEntryPoint implements EntryPoint {
 			@Override
 			public void onHeartbeat() {
 			}
+
+			@Override
+			public void onRefresh() {
+			}
 			
 			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(connected + " " + exception.toString());
+				log(connected + " " + string(exception));
 				stop();
 			}
 		});
 	}
 	
 	public void latencyTest() {
-		final int c = 100;
-		final int d = 100;
+		final int c = 10000;
+		final int d = 10;
 		start(GWT.getModuleBaseURL() + "latency?count=" + c + "&delay=" + d, new CometListener() {
 			double start = Duration.currentTimeMillis();
 			double connected;
@@ -193,10 +212,17 @@ public class CometTestEntryPoint implements EntryPoint {
 			public void onMessage(List<? extends Serializable> messages) {
 				double now = Duration.currentTimeMillis();
 				for (Serializable message : messages) {
-					latency += now - Double.parseDouble(message.toString());
+//					latency += now - Double.parseDouble(message.string());
+					
+					if (count != Integer.parseInt(message.toString())) {
+						log("expected count " + count + " actual " + message);
+					}
+					count++;
 				}
-				count += messages.size();
-				if (count % 10 == 0) {
+				
+				
+//				count += messages.size();
+				if (count % 1000 == 0) {
 					log(String.valueOf(count));
 				}
 			}
@@ -214,7 +240,7 @@ public class CometTestEntryPoint implements EntryPoint {
 				log("Count " + count);
 				log("Rate " + count / (disconnected - connected) * 1000 + "/s");
 				log("Latency " + latency / count + "ms");
-				stop();
+//				stop();
 			}
 			
 			@Override
@@ -222,8 +248,13 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 			
 			@Override
+			public void onRefresh() {
+				log("Refresh " + (Duration.currentTimeMillis() - connected) + "ms");
+			}
+			
+			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(connected + " " + exception.toString());
+				log(connected + " " + string(exception));
 				stop();
 			}
 		});
@@ -264,8 +295,12 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 			
 			@Override
+			public void onRefresh() {
+			}
+			
+			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(connected + " " + exception.toString());
+				log(connected + " " + string(exception));
 //				stop();
 			}
 		});
@@ -302,6 +337,10 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 			
 			@Override
+			public void onRefresh() {
+			}
+			
+			@Override
 			public void onError(Throwable exception, boolean connected) {
 				stop();
 				paddingTest(p + 1, max);
@@ -323,9 +362,18 @@ public class CometTestEntryPoint implements EntryPoint {
 		result.append(' ');
 		ESCAPE = result.toString();
 	}
+
+	public void derpcEscapeTest() {
+		CometSerializer serializer = GWT.create(RPCTestCometSerializer.class);
+		escapeTest(serializer);
+	}
 	
-	public void escapeTest() {
-		final CometSerializer serializer = GWT.create(TestCometSerializer.class);
+	public void rpcEscapeTest() {
+		CometSerializer serializer = GWT.create(DeRPCTestCometSerializer.class);
+		escapeTest(serializer);
+	}
+	
+	public void escapeTest(final CometSerializer serializer) {
 		start(GWT.getModuleBaseURL() + "escape", serializer, new CometListener() {
 			
 			@Override
@@ -376,15 +424,23 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 			
 			@Override
+			public void onRefresh() {
+			}
+			
+			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(connected + " " + exception.toString());
+				log(connected + " " + string(exception));
 				stop();
 			}
 		});
 	}
+
+	@SerialTypes( mode=SerialMode.RPC, value={ TestData.class })
+	public static abstract class RPCTestCometSerializer extends CometSerializer {
+	}
 	
-	@SerialTypes( { TestData.class })
-	public static abstract class TestCometSerializer extends CometSerializer {
+	@SerialTypes( mode=SerialMode.DE_RPC, value={ TestData.class })
+	public static abstract class DeRPCTestCometSerializer extends CometSerializer {
 	}
 	
 	public static class TestData implements Serializable {
@@ -399,9 +455,18 @@ public class CometTestEntryPoint implements EntryPoint {
 			this.string = string;
 		}
 	}
+
+	public void rpcSerializeTest() {
+		CometSerializer serializer = GWT.create(RPCTestCometSerializer.class);
+		serializeTest(serializer);
+	}
+
+	public void derpcSerializeTest() {
+		CometSerializer serializer = GWT.create(DeRPCTestCometSerializer.class);
+		serializeTest(serializer);
+	}
 	
-	public void serializeTest() {
-		final CometSerializer serializer = GWT.create(TestCometSerializer.class);
+	public void serializeTest(final CometSerializer serializer) {
 		
 		final int c = 1000;
 		final int b = 10;
@@ -442,17 +507,19 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 			
 			@Override
+			public void onRefresh() {
+			}
+			
+			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(connected + " " + exception.toString());
+				log(connected + " " + string(exception));
 				stop();
 			}
 		});
 	}
 
 	public void errorTest() {
-		final CometSerializer serializer = GWT.create(TestCometSerializer.class);
-		
-		start(GWT.getModuleBaseURL() + "error", serializer, new CometListener() {
+		start(GWT.getModuleBaseURL() + "error", new CometListener() {
 			double start = Duration.currentTimeMillis();
 			double connected;
 			double disconnected;
@@ -482,10 +549,24 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 			
 			@Override
+			public void onRefresh() {
+			}
+			
+			@Override
 			public void onError(Throwable exception, boolean connected) {
-				log(connected + " " + exception.toString());
+				log(connected + " " + string(exception));
 //				stop();
 			}
 		});
+	}
+
+	private static String string(Throwable exception) {
+		String result = exception.toString();
+		exception = exception.getCause();
+		while (exception != null) {
+			result += "\n" + exception.toString();
+			exception = exception.getCause();
+		}
+		return result;
 	}
 }

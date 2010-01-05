@@ -25,6 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 import net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport;
 import net.zschech.gwt.comet.server.CometServlet;
 
+import com.google.gwt.rpc.server.ClientOracle;
 import com.google.gwt.user.server.rpc.SerializationPolicy;
 
 /**
@@ -34,8 +35,8 @@ import com.google.gwt.user.server.rpc.SerializationPolicy;
  */
 public class OperaEventSourceCometServletResponse extends CometServletResponseImpl {
 	
-	public OperaEventSourceCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, CometServlet servlet, AsyncServlet async, int heartbeat) {
-		super(request, response, serializationPolicy, servlet, async, heartbeat);
+	public OperaEventSourceCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
+		super(request, response, serializationPolicy, clientOracle, servlet, async, heartbeat);
 	}
 	
 	@Override
@@ -67,7 +68,7 @@ public class OperaEventSourceCometServletResponse extends CometServletResponseIm
 			CharSequence string;
 			char event;
 			if (message instanceof CharSequence) {
-				string = (CharSequence) message;
+				string = HTTPRequestCometServletResponse.escape((CharSequence) message);
 				event = 's';
 			}
 			else {
@@ -75,7 +76,7 @@ public class OperaEventSourceCometServletResponse extends CometServletResponseIm
 				event = 'o';
 			}
 			writer.append("Event: ").append(event).append('\n');
-			writer.append("data: ").append(HTTPRequestCometServletResponse.escape(string)).append("\n\n");
+			writer.append("data: ").append(string).append("\n\n");
 		}
 	}
 	

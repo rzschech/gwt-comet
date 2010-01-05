@@ -16,7 +16,13 @@
 package net.zschech.gwt.comet.server;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Serializable;
+import java.lang.ref.SoftReference;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -27,6 +33,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import net.zschech.gwt.comet.client.impl.CometTransport;
 import net.zschech.gwt.comet.server.impl.AsyncServlet;
 import net.zschech.gwt.comet.server.impl.CometServletResponseImpl;
 import net.zschech.gwt.comet.server.impl.CometSessionImpl;
@@ -34,9 +41,10 @@ import net.zschech.gwt.comet.server.impl.HTTPRequestCometServletResponse;
 import net.zschech.gwt.comet.server.impl.IEHTMLFileCometServletResponse;
 import net.zschech.gwt.comet.server.impl.OperaEventSourceCometServletResponse;
 
-import com.google.gwt.user.client.rpc.SerializationException;
+import com.google.gwt.rpc.server.ClientOracle;
+import com.google.gwt.rpc.server.HostedModeClientOracle;
+import com.google.gwt.rpc.server.WebModeClientOracle;
 import com.google.gwt.user.server.rpc.SerializationPolicy;
-import com.google.gwt.user.server.rpc.impl.ServerSerializationStreamWriter;
 
 /**
  * This is the base class for application's Comet servlets. To process a Comet request override
@@ -45,13 +53,13 @@ import com.google.gwt.user.server.rpc.impl.ServerSerializationStreamWriter;
  * 
  * @author Richard Zschech
  */
-public abstract class CometServlet extends HttpServlet {
+public class CometServlet extends HttpServlet {
 	
 	private static final long serialVersionUID = 820972291784919880L;
 	
 	private int heartbeat = 15 * 1000; // 15 seconds by default
 	
-	private AsyncServlet async;
+	private transient AsyncServlet async;
 	
 	public void setHeartbeat(int heartbeat) {
 		this.heartbeat = heartbeat;
@@ -93,16 +101,17 @@ public abstract class CometServlet extends HttpServlet {
 		
 		String accept = request.getHeader("Accept");
 		String userAgent = request.getHeader("User-Agent");
-		SerializationPolicy serializationPolicy = createSerializationPolicy();
+		ClientOracle clientOracle = getClientOracle(request);
+		SerializationPolicy serializationPolicy = clientOracle == null ? createSerializationPolicy() : null;
 		CometServletResponseImpl cometServletResponse;
 		if ("text/plain".equals(accept)) {
-			cometServletResponse = new HTTPRequestCometServletResponse(request, response, serializationPolicy, this, async, requestHeartbeat);
+			cometServletResponse = new HTTPRequestCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
 		}
 		else if (userAgent != null && userAgent.contains("Opera")) {
-			cometServletResponse = new OperaEventSourceCometServletResponse(request, response, serializationPolicy, this, async, requestHeartbeat);
+			cometServletResponse = new OperaEventSourceCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
 		}
 		else {
-			cometServletResponse = new IEHTMLFileCometServletResponse(request, response, serializationPolicy, this, async, requestHeartbeat);
+			cometServletResponse = new IEHTMLFileCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
 		}
 		doCometImpl(cometServletResponse);
 	}
@@ -186,19 +195,70 @@ public abstract class CometServlet extends HttpServlet {
 		};
 	}
 	
-	/**
-	 * Utility to GWT serialize an object to a String.
-	 * 
-	 * @param message
-	 * @param serializationPolicy
-	 * @return the serialized message
-	 * @throws SerializationException
-	 */
-	public static String serialize(Serializable message, SerializationPolicy serializationPolicy) throws SerializationException {
-		ServerSerializationStreamWriter streamWriter = new ServerSerializationStreamWriter(serializationPolicy);
-		streamWriter.prepareToWrite();
-		streamWriter.writeObject(message);
-		return streamWriter.toString();
+	private final Map<String, SoftReference<ClientOracle>> clientOracleCache = new HashMap<String, SoftReference<ClientOracle>>();
+	
+	protected ClientOracle getClientOracle(HttpServletRequest request) throws ServletException {
+		String permutationStrongName = request.getParameter(CometTransport.STRONG_NAME_PARAMETER);
+		if (permutationStrongName == null) {
+			return null;
+		}
+		
+		String moduleBase = request.getParameter(CometTransport.MODULE_BASE_PARAMETER);
+		if (moduleBase == null) {
+			return null;
+		}
+		
+		String basePath;
+		try {
+			basePath = new URL(moduleBase).getPath();
+			if (basePath == null) {
+				throw new ServletException("Blocked request without GWT base path header (XSRF attack?)");
+			}
+		}
+		catch (MalformedURLException e) {
+			throw new ServletException("Blocked request without GWT base path header (XSRF attack?)");
+		}
+		
+		ClientOracle toReturn;
+		synchronized (clientOracleCache) {
+			if (clientOracleCache.containsKey(permutationStrongName)) {
+				toReturn = clientOracleCache.get(permutationStrongName).get();
+				if (toReturn != null) {
+					return toReturn;
+				}
+			}
+			
+			if ("HostedMode".equals(permutationStrongName)) {
+				// if (!allowHostedModeConnections()) {
+				// throw new SecurityException("Blocked hosted mode request");
+				// }
+				toReturn = new HostedModeClientOracle();
+			}
+			else {
+				InputStream in = findClientOracleData(basePath, permutationStrongName);
+				
+				try {
+					toReturn = WebModeClientOracle.load(in);
+				}
+				catch (IOException e) {
+					throw new ServletException("Could not load serialization policy for permutation " + permutationStrongName, e);
+				}
+			}
+			clientOracleCache.put(permutationStrongName, new SoftReference<ClientOracle>(toReturn));
+		}
+		
+		return toReturn;
+	}
+	
+	protected static final String CLIENT_ORACLE_EXTENSION = ".gwt.rpc";
+	
+	protected InputStream findClientOracleData(String requestModuleBasePath, String permutationStrongName) throws ServletException {
+		String resourcePath = requestModuleBasePath + permutationStrongName + CLIENT_ORACLE_EXTENSION;
+		InputStream in = getServletContext().getResourceAsStream(resourcePath);
+		if (in == null) {
+			throw new ServletException("Could not find ClientOracle data for permutation " + permutationStrongName);
+		}
+		return in;
 	}
 	
 	public static CometSession getCometSession(HttpSession httpSession) {

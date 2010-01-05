@@ -299,20 +299,17 @@ public class CometClient {
 		}
 		
 		public void connect() {
-			System.out.println("+ Connecting " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
 			connectionTimer.schedule(connectionTimeout);
 			transport.connect();
 		}
 		
 		public void disconnect() {
-			System.out.println("+ Disconnecting " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
 			cancelTimers();
 			transport.disconnect();
 		}
 		
 		@Override
 		public void onConnected(int heartbeat) {
-			System.out.println("+ onConnected " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
 			heartbeatTimeout = heartbeat + connectionTimeout;
 			lastReceivedTime = Duration.currentTimeMillis();
 			
@@ -324,35 +321,30 @@ public class CometClient {
 		
 		@Override
 		public void onDisconnected() {
-			System.out.println("+ onDisconnected " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
 			cancelTimers();
 			doOnDisconnected(this);
 		}
 		
 		@Override
 		public void onError(Throwable exception, boolean connected) {
-			System.out.println("+ onError " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
 			cancelTimers();
 			doOnError(exception, connected, this);
 		}
 		
 		@Override
 		public void onHeartbeat() {
-			System.out.println("+ onHeartbeat " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
 			lastReceivedTime = Duration.currentTimeMillis();
 			doOnHeartbeat(this);
 		}
 		
 		@Override
 		public void onRefresh() {
-			System.out.println("+ onRefresh " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
 			lastReceivedTime = Duration.currentTimeMillis();
 			doOnRefresh(this);
 		}
 		
 		@Override
 		public void onMessage(List<? extends Serializable> messages) {
-			System.out.println("+ onMessage " + (primaryTransport == this) + " " + refreshing + " " + this.hashCode());
 			lastReceivedTime = Duration.currentTimeMillis();
 			doOnMessage(messages, this);
 		}

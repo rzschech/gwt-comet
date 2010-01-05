@@ -25,6 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 import net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport;
 import net.zschech.gwt.comet.server.CometServlet;
 
+import com.google.gwt.rpc.server.ClientOracle;
 import com.google.gwt.user.server.rpc.SerializationPolicy;
 
 /**
@@ -48,8 +49,8 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	private final boolean chrome;
 	private int clientMemory;
 	
-	public HTTPRequestCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, CometServlet servlet, AsyncServlet async, int heartbeat) {
-		super(request, response, serializationPolicy, servlet, async, heartbeat);
+	public HTTPRequestCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
+		super(request, response, serializationPolicy, clientOracle, servlet, async, heartbeat);
 		
 		String userAgent = getRequest().getHeader("User-Agent");
 		chrome = userAgent != null && userAgent.contains("Chrome");

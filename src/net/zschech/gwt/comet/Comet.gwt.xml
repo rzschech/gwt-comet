@@ -13,6 +13,7 @@
 <!-- limitations under the License.                                         -->
 <module>
 	<inherits name="com.google.gwt.user.User" />
+	<inherits name="com.google.gwt.rpc.RPC" />
 	
 	<replace-with class="net.zschech.gwt.comet.client.impl.HTTPRequestCometTransport">
 		<when-type-is class="net.zschech.gwt.comet.client.impl.CometTransport"/>

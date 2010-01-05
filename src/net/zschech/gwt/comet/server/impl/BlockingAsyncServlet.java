@@ -149,12 +149,14 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	
 	@Override
 	public void terminate(CometServletResponseImpl response, CometSessionImpl session, Object suspendInfo) {
+		assert !Thread.holdsLock(response);
 		if (session == null) {
 			synchronized (response) {
 				response.notifyAll();
 			}
 		}
 		else {
+			assert !Thread.holdsLock(session);
 			synchronized (session) {
 				session.notifyAll();
 			}
@@ -177,6 +179,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	
 	@Override
 	public ScheduledFuture<?> scheduleHeartbeat(final CometServletResponseImpl response, CometSessionImpl session) {
+		assert Thread.holdsLock(response);
 		return executor.schedule(new Runnable() {
 			@Override
 			public void run() {
@@ -187,6 +190,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	
 	@Override
 	public ScheduledFuture<?> scheduleSessionKeepAlive(final CometServletResponseImpl response, final CometSessionImpl session) {
+		assert Thread.holdsLock(response);
 		try {
 			long keepAliveTime = getKeepAliveTime(session);
 			if (keepAliveTime <= 0) {
@@ -197,9 +201,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 				return executor.schedule(new Runnable() {
 					@Override
 					public void run() {
-						synchronized (response) {
-							response.scheduleSessionKeepAlive();
-						}
+						response.scheduleSessionKeepAlive();
 					}
 				}, keepAliveTime, TimeUnit.MILLISECONDS);
 			}
