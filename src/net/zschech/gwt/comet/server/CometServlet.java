@@ -56,7 +56,7 @@ import com.google.gwt.user.server.rpc.SerializationPolicy;
 public class CometServlet extends HttpServlet {
 	
 	private static final long serialVersionUID = 820972291784919880L;
-	
+
 	private int heartbeat = 15 * 1000; // 15 seconds by default
 	
 	private transient AsyncServlet async;
@@ -82,40 +82,48 @@ public class CometServlet extends HttpServlet {
 	@Override
 	protected void doGet(final HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		
-		int requestHeartbeat = heartbeat;
-		String requestedHeartbeat = request.getParameter("heartbeat");
-		if (requestedHeartbeat != null) {
-			try {
-				requestHeartbeat = Integer.parseInt(requestedHeartbeat);
-				if (requestHeartbeat <= 0) {
-					response.sendError(HttpServletResponse.SC_BAD_REQUEST, "invalid heartbeat parameter");
-					return;
+		try {
+			int requestHeartbeat = heartbeat;
+			String requestedHeartbeat = request.getParameter("heartbeat");
+			if (requestedHeartbeat != null) {
+				try {
+					requestHeartbeat = Integer.parseInt(requestedHeartbeat);
+					if (requestHeartbeat <= 0) {
+						throw new IOException("invalid heartbeat parameter");
+					}
+					requestHeartbeat = getHeartbeat();
 				}
-				requestHeartbeat = getHeartbeat();
+				catch (NumberFormatException e) {
+					throw new IOException("invalid heartbeat parameter");
+				}
 			}
-			catch (NumberFormatException e) {
-				response.sendError(HttpServletResponse.SC_BAD_REQUEST, "invalid heartbeat parameter");
-				return;
-			}
+			
+			ClientOracle clientOracle = getClientOracle(request);
+			SerializationPolicy serializationPolicy = clientOracle == null ? createSerializationPolicy() : null;
+			CometServletResponseImpl cometServletResponse = createCometServletResponse(request, response, serializationPolicy, clientOracle, requestHeartbeat);
+			doCometImpl(cometServletResponse);
 		}
+		catch (IOException e) {
+			CometServletResponseImpl cometServletResponse = createCometServletResponse(request, response, null, null, 0);
+			cometServletResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+		}
+	}
+	
+	private CometServletResponseImpl createCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, int requestHeartbeat) {
 		
 		String accept = request.getHeader("Accept");
 		String userAgent = request.getHeader("User-Agent");
-		ClientOracle clientOracle = getClientOracle(request);
-		SerializationPolicy serializationPolicy = clientOracle == null ? createSerializationPolicy() : null;
-		CometServletResponseImpl cometServletResponse;
 		if ("text/plain".equals(accept)) {
-			cometServletResponse = new HTTPRequestCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
+			return new HTTPRequestCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
 		}
 		else if (userAgent != null && userAgent.contains("Opera")) {
-			cometServletResponse = new OperaEventSourceCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
+			return new OperaEventSourceCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
 		}
 		else {
-			cometServletResponse = new IEHTMLFileCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
+			return new IEHTMLFileCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
 		}
-		doCometImpl(cometServletResponse);
 	}
-	
+
 	private void doCometImpl(CometServletResponseImpl response) throws IOException {
 		try {
 			// setup the request
@@ -197,7 +205,7 @@ public class CometServlet extends HttpServlet {
 	
 	private final Map<String, SoftReference<ClientOracle>> clientOracleCache = new HashMap<String, SoftReference<ClientOracle>>();
 	
-	protected ClientOracle getClientOracle(HttpServletRequest request) throws ServletException {
+	protected ClientOracle getClientOracle(HttpServletRequest request) throws IOException {
 		String permutationStrongName = request.getParameter(CometTransport.STRONG_NAME_PARAMETER);
 		if (permutationStrongName == null) {
 			return null;
@@ -208,15 +216,9 @@ public class CometServlet extends HttpServlet {
 			return null;
 		}
 		
-		String basePath;
-		try {
-			basePath = new URL(moduleBase).getPath();
-			if (basePath == null) {
-				throw new ServletException("Blocked request without GWT base path header (XSRF attack?)");
-			}
-		}
-		catch (MalformedURLException e) {
-			throw new ServletException("Blocked request without GWT base path header (XSRF attack?)");
+		String basePath = new URL(moduleBase).getPath();
+		if (basePath == null) {
+			throw new MalformedURLException("Blocked request without GWT base path header (XSRF attack?)");
 		}
 		
 		ClientOracle toReturn;
@@ -237,12 +239,7 @@ public class CometServlet extends HttpServlet {
 			else {
 				InputStream in = findClientOracleData(basePath, permutationStrongName);
 				
-				try {
-					toReturn = WebModeClientOracle.load(in);
-				}
-				catch (IOException e) {
-					throw new ServletException("Could not load serialization policy for permutation " + permutationStrongName, e);
-				}
+				toReturn = WebModeClientOracle.load(in);
 			}
 			clientOracleCache.put(permutationStrongName, new SoftReference<ClientOracle>(toReturn));
 		}
@@ -252,11 +249,11 @@ public class CometServlet extends HttpServlet {
 	
 	protected static final String CLIENT_ORACLE_EXTENSION = ".gwt.rpc";
 	
-	protected InputStream findClientOracleData(String requestModuleBasePath, String permutationStrongName) throws ServletException {
+	protected InputStream findClientOracleData(String requestModuleBasePath, String permutationStrongName) throws IOException {
 		String resourcePath = requestModuleBasePath + permutationStrongName + CLIENT_ORACLE_EXTENSION;
 		InputStream in = getServletContext().getResourceAsStream(resourcePath);
 		if (in == null) {
-			throw new ServletException("Could not find ClientOracle data for permutation " + permutationStrongName);
+			throw new IOException("Could not find ClientOracle data for permutation " + permutationStrongName);
 		}
 		return in;
 	}
