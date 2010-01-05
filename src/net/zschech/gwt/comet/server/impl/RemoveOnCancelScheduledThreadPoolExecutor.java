@@ -119,6 +119,7 @@ public class RemoveOnCancelScheduledThreadPoolExecutor extends ScheduledThreadPo
 			return wrap.getDelay(unit);
 		}
 		
+		@SuppressWarnings("unchecked")
 		@Override
 		public int compareTo(Delayed o) {
 			return wrap.compareTo(((WrapScheduledFuture) o).wrap);
