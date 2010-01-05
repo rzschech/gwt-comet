@@ -362,13 +362,13 @@ public class CometTestEntryPoint implements EntryPoint {
 		result.append(' ');
 		ESCAPE = result.toString();
 	}
-
-	public void derpcEscapeTest() {
+	
+	public void rpcEscapeTest() {
 		CometSerializer serializer = GWT.create(RPCTestCometSerializer.class);
 		escapeTest(serializer);
 	}
 	
-	public void rpcEscapeTest() {
+	public void derpcEscapeTest() {
 		CometSerializer serializer = GWT.create(DeRPCTestCometSerializer.class);
 		escapeTest(serializer);
 	}
