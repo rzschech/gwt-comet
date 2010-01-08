@@ -132,15 +132,7 @@ public class CometClient {
 	}
 	
 	private void doOnConnected(int heartbeat, CometClientTransportWrapper transport) {
-		try {
-			listener.onConnected(heartbeat);
-		}
-		catch (RuntimeException e) {
-			uncaught(e);
-		}
-		catch (Error e) {
-			uncaught(e);
-		}
+		listener.onConnected(heartbeat);
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -163,15 +155,7 @@ public class CometClient {
 			}
 		}
 		else {
-			try {
-				listener.onDisconnected();
-			}
-			catch (RuntimeException e) {
-				uncaught(e);
-			}
-			catch (Error e) {
-				uncaught(e);
-			}
+			listener.onDisconnected();
 			
 			if (running) {
 				doConnect();
@@ -181,16 +165,7 @@ public class CometClient {
 	
 	private void doOnHeartbeat(CometClientTransportWrapper transport) {
 		if (transport == primaryTransport) {
-			
-			try {
-				listener.onHeartbeat();
-			}
-			catch (RuntimeException e) {
-				uncaught(e);
-			}
-			catch (Error e) {
-				uncaught(e);
-			}
+			listener.onHeartbeat();
 		}
 	}
 	
@@ -203,15 +178,7 @@ public class CometClient {
 			}
 			refreshTransport.connect();
 			
-			try {
-				listener.onRefresh();
-			}
-			catch (RuntimeException e) {
-				uncaught(e);
-			}
-			catch (Error e) {
-				uncaught(e);
-			}
+			listener.onRefresh();
 		}
 		else {
 			refreshEnqueue(REFRESH);
@@ -230,15 +197,7 @@ public class CometClient {
 			doDisconnect();
 		}
 		
-		try {
-			listener.onError(exception, connected);
-		}
-		catch (RuntimeException e) {
-			uncaught(e);
-		}
-		catch (Error e) {
-			uncaught(e);
-		}
+		listener.onError(exception, connected);
 		
 		if (running) {
 			primaryTransport.reconnectionTimer.schedule(reconnectionTimout);
@@ -247,38 +206,10 @@ public class CometClient {
 	
 	private void doOnMessage(List<? extends Serializable> messages, CometClientTransportWrapper transport) {
 		if (transport == primaryTransport) {
-			try {
-				listener.onMessage(messages);
-			}
-			catch (RuntimeException e) {
-				uncaught(e);
-			}
-			catch (Error e) {
-				uncaught(e);
-			}
+			listener.onMessage(messages);
 		}
 		else {
 			refreshEnqueue(messages);
-		}
-	}
-	
-	private void uncaught(RuntimeException e) {
-		UncaughtExceptionHandler uncaughtExceptionHandler = GWT.getUncaughtExceptionHandler();
-		if (uncaughtExceptionHandler != null) {
-			uncaughtExceptionHandler.onUncaughtException(e);
-		}
-		else {
-			throw e;
-		}
-	}
-	
-	private void uncaught(Error e) {
-		UncaughtExceptionHandler uncaughtExceptionHandler = GWT.getUncaughtExceptionHandler();
-		if (uncaughtExceptionHandler != null) {
-			uncaughtExceptionHandler.onUncaughtException(e);
-		}
-		else {
-			throw e;
 		}
 	}
 	

@@ -63,21 +63,21 @@ public class OperaEventSourceCometTransport extends CometTransport {
 	private static native Element createEventSource(OperaEventSourceCometTransport client) /*-{
 		var eventSource = document.createElement("event-source");
 
-		var stringMessageHandler = function(event) {
+		var stringMessageHandler = $entry(function(event) {
 			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onString(Ljava/lang/String;)(event.data);
-		};
+		});
 
 		eventSource.addEventListener("s", stringMessageHandler, false);
 
-		var objectMessageHandler = function(event) {
+		var objectMessageHandler = $entry(function(event) {
 			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onObject(Ljava/lang/String;)(event.data);
-		};
+		});
 
 		eventSource.addEventListener("o", objectMessageHandler, false);
 
-		var connectionHandler = function(event) {
+		var connectionHandler = $entry(function(event) {
 			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onConnection(Ljava/lang/String;)(event.data);
-		};
+		});
 
 		eventSource.addEventListener("c", connectionHandler, false);
 

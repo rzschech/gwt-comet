@@ -90,27 +90,28 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		htmlfile.write("<html><iframe src=''></iframe></html>");
 		htmlfile.close();
 
-		htmlfile.parentWindow.s = function(message) {
+		htmlfile.parentWindow.s = $entry(function(message) {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onString(Ljava/lang/String;)(message);
-		};
-		htmlfile.parentWindow.o = function(message) {
+		});
+		htmlfile.parentWindow.o = $entry(function(message) {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onObject(Ljava/lang/String;)(message);
-		};
-		htmlfile.parentWindow.c = function(heartbeat) {
+		});
+		htmlfile.parentWindow.c = $entry(function(heartbeat) {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onConnected(I)(heartbeat);
-		};
-		htmlfile.parentWindow.d = function() {
+		});
+		htmlfile.parentWindow.d = $entry(function() {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onDisconnected()();
-		};
-		htmlfile.parentWindow.e = function(statusCode, message) {
+		});
+		htmlfile.parentWindow.e = $entry(function(statusCode, message) {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onError(ILjava/lang/String;)(statusCode, message);
-		};
-		htmlfile.parentWindow.h = function() {
+		});
+		htmlfile.parentWindow.h = $entry(function() {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onHeartbeat()();
-		};
-		htmlfile.parentWindow.r = function() {
+		});
+		htmlfile.parentWindow.r = $entry(function() {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onRefresh()();
-		};
+		});
+		// no $entry() because no user code is reachable
 		htmlfile.parentWindow.t = function() {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onTerminate()();
 		};
