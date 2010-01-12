@@ -179,11 +179,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		response.setHeader("Cache-Control", "no-cache");
 		response.setCharacterEncoding("UTF-8");
 		
-		String origin = request.getHeader("Origin");
-		if (origin != null) {
-			response.setHeader("Access-Control-Allow-Origin", origin);
-		}
-		
 		OutputStream outputStream = response.getOutputStream();
 		flushable = async.getFlushable(this);
 		

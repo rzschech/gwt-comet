@@ -59,6 +59,11 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	@Override
 	public void initiate() throws IOException {
 		getResponse().setContentType("text/plain");
+
+		String origin = getRequest().getHeader("Origin");
+		if (origin != null) {
+			getResponse().setHeader("Access-Control-Allow-Origin", origin);
+		}
 		
 		super.initiate();
 		
