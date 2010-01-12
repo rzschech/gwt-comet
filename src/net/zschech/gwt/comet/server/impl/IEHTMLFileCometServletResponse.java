@@ -66,26 +66,21 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	}
 	
 	@Override
-	protected CharSequence getPadding(int written) {
-		if (padding != null) {
-			if (written < padding) {
-				StringBuilder result = new StringBuilder(padding - written);
-				for (int i = written; i < padding; i++) {
-					result.append(' ');
-				}
-				return result;
+	protected int getPaddingRequired() {
+		return PADDING_REQUIRED;
+	}
+	
+	@Override
+	protected CharSequence getPadding(int padding) {
+		if (padding > PADDING_STRING.length()) {
+			StringBuilder result = new StringBuilder(padding);
+			for (int i = 0; i < padding; i++) {
+				result.append(' ');
 			}
-			else {
-				return null;
-			}
-		}
-		
-		int padding = PADDING_REQUIRED;
-		if (written < padding) {
-			return PADDING_STRING.substring(0, padding - written);
+			return result;
 		}
 		else {
-			return null;
+			return PADDING_STRING.substring(0, padding);
 		}
 	}
 	
@@ -142,7 +137,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 			return written > 4 * 1024 * 1024;
 		}
 	}
-
+	
 	@Override
 	protected boolean isOverTerminateLength(int written) {
 		return false;

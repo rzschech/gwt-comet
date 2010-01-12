@@ -33,7 +33,6 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	private CountOutputStream countOutputStream;
 	private boolean refresh;
 	
-	protected Integer padding;
 	protected Integer length;
 	
 	public ManagedStreamCometServletResponseImpl(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
@@ -48,9 +47,13 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	
 	@Override
 	public void doSuspend() throws IOException {
+		int paddingRequired;
 		String paddingParameter = getRequest().getParameter("padding");
 		if (paddingParameter != null) {
-			padding = Integer.parseInt(paddingParameter);
+			paddingRequired = Integer.parseInt(paddingParameter);
+		}
+		else {
+			paddingRequired = getPaddingRequired();
 		}
 		
 		String lengthParameter = getRequest().getParameter("length");
@@ -58,13 +61,25 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 			length = Integer.parseInt(lengthParameter);
 		}
 		
-		countOutputStream.setIgnoreFlush(true);
-		writer.flush();
-		countOutputStream.setIgnoreFlush(false);
-		int written = countOutputStream.getCount();
-		CharSequence padding = getPadding(written);
-		if (padding != null) {
-			writer.append(padding);
+		if (paddingRequired > 0) {
+			countOutputStream.setIgnoreFlush(true);
+			writer.flush();
+			
+			int written = countOutputStream.getCount();
+			while (written < paddingRequired && checkSessionQueue(false)) {
+				writeSessionQueue(false);
+				writer.flush();
+				written = countOutputStream.getCount();
+			}
+			
+			if (paddingRequired > written) {
+				CharSequence padding = getPadding(paddingRequired - written);
+				if (padding != null) {
+					writer.append(padding);
+				}
+			}
+			
+			countOutputStream.setIgnoreFlush(false);
 		}
 	}
 	
@@ -93,9 +108,11 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	
 	protected abstract void doRefresh() throws IOException;
 	
-	protected abstract CharSequence getPadding(int written);
+	protected abstract int getPaddingRequired();
+	
+	protected abstract CharSequence getPadding(int padding);
 	
 	protected abstract boolean isOverRefreshLength(int written);
-
+	
 	protected abstract boolean isOverTerminateLength(int written);
 }

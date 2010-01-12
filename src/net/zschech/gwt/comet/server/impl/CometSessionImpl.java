@@ -68,7 +68,6 @@ public class CometSessionImpl implements CometSession {
 	
 	@Override
 	public Queue<? extends Serializable> getQueue() {
-		ensureValid();
 		return queue;
 	}
 	

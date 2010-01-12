@@ -24,8 +24,10 @@ import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledFuture;
 
@@ -214,11 +216,23 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 					return;
 				}
 				
-				// TODO send the data in the comet queue before suspending it
 				doSuspend();
-				flush();
-				suspended = true;
+				
 				s = session;
+				boolean flush;
+				if (s == null) {
+					flush = true;
+				}
+				else {
+					flush = s.getQueue().isEmpty();
+					
+				}
+				
+				if (flush) {
+					flush();
+				}
+				
+				suspended = true;
 				
 				// Don't hold onto the request while suspended as it takes up memory.
 				// Also Jetty and possibly other web servers reuse the HttpServletRequests so we can't assume they are still
@@ -386,6 +400,36 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 		catch (SerializationException e) {
 			throw new NotSerializableException("Unable to serialize object, message: " + e.getMessage());
+		}
+	}
+	
+	protected synchronized boolean checkSessionQueue(boolean empty) {
+		return !terminated && session != null && session.isValid() && (empty ? session.getQueue().isEmpty() : !session.getQueue().isEmpty());
+	}
+	
+	protected synchronized void writeSessionQueue(boolean flush) throws IOException {
+		assert Thread.holdsLock(this);
+		
+		if (!terminated && session.isValid()) {
+			Queue<? extends Serializable> queue = session.getQueue();
+			int batchSize = 10;
+			List<Serializable> messages = batchSize == 1 ? null : new ArrayList<Serializable>(batchSize);
+			
+			Serializable message = queue.remove();
+			if (batchSize == 1) {
+				write(message, flush && queue.isEmpty());
+			}
+			else {
+				messages.add(message);
+				for (int i = 0; i < batchSize - 1; i++) {
+					message = queue.poll();
+					if (message == null) {
+						break;
+					}
+					messages.add(message);
+				}
+				write(messages, flush && queue.isEmpty());
+			}
 		}
 	}
 }

@@ -17,10 +17,6 @@ package net.zschech.gwt.comet.server.impl;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
@@ -98,37 +94,16 @@ public class BlockingAsyncServlet extends AsyncServlet {
 		else {
 			assert !Thread.holdsLock(session);
 			
-			Queue<? extends Serializable> queue = session.getQueue();
-			List<Serializable> messages = batchSize == 1 ? null : new ArrayList<Serializable>(batchSize);
 			try {
 				try {
 					while (session.isValid() && !response.isTerminated()) {
 						synchronized (session) {
-							while (queue.isEmpty() && session.isValid() && !response.isTerminated()) {
+							while (response.checkSessionQueue(true)) {
 								session.wait();
 							}
 						}
 						
-						synchronized (response) {
-							if (session.isValid() && !response.isTerminated()) {
-								Serializable message = queue.remove();
-								if (batchSize == 1) {
-									response.write(message, queue.isEmpty());
-								}
-								else {
-									messages.add(message);
-									for (int i = 0; i < batchSize - 1; i++) {
-										message = queue.poll();
-										if (message == null) {
-											break;
-										}
-										messages.add(message);
-									}
-									response.write(messages, queue.isEmpty());
-									messages.clear();
-								}
-							}
-						}
+						response.writeSessionQueue(true);
 					}
 				}
 				catch (InterruptedException e) {
@@ -148,7 +123,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	}
 	
 	@Override
-	public void terminate(CometServletResponseImpl response, CometSessionImpl session, Object suspendInfo) {
+	public void terminate(CometServletResponseImpl response, final CometSessionImpl session, Object suspendInfo) {
 		assert !Thread.holdsLock(response);
 		if (session == null) {
 			synchronized (response) {
@@ -157,9 +132,15 @@ public class BlockingAsyncServlet extends AsyncServlet {
 		}
 		else {
 			assert !Thread.holdsLock(session);
-			synchronized (session) {
-				session.notifyAll();
-			}
+			// we need to release the lock on the response before locking the session to prevent deadlocking with
+			// the suspend method above which locks the session then the response.
+			executor.execute(new Runnable() {
+				public void run() {
+					synchronized (session) {
+						session.notifyAll();
+					}
+				}
+			});
 		}
 	}
 	

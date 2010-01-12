@@ -67,39 +67,32 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	}
 	
 	@Override
-	protected CharSequence getPadding(int written) {
-		if (padding != null) {
-			if (written < padding) {
-				StringBuilder result = new StringBuilder(padding - written);
-				for (int i = written; i < padding - 2; i++) {
-					result.append('*');
-				}
-				result.append('\n');
-				return result;
-			}
-			else {
-				return null;
-			}
-		}
-		
-		int paddingRequired;
+	protected int getPaddingRequired() {
 		if (chrome) {
 			if (getRequest().getScheme().equals("https")) {
-				paddingRequired = 64;
+				return 64;
 			}
 			else {
-				paddingRequired = 42;
+				return 42;
 			}
 		}
 		else {
-			paddingRequired = 0;
+			return 0;
 		}
-		
-		if (written < paddingRequired) {
-			return PADDING_STRING.substring(written);
+	}
+	
+	@Override
+	protected CharSequence getPadding(int padding) {
+		if (padding > PADDING_STRING.length()) {
+			StringBuilder result = new StringBuilder(padding);
+			for (int i = 0; i < padding - 2; i++) {
+				result.append('*');
+			}
+			result.append('\n');
+			return result;
 		}
 		else {
-			return null;
+			return PADDING_STRING.substring(padding);
 		}
 	}
 	
@@ -140,15 +133,16 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 			return written > length;
 		}
 		else {
-//		 if (chrome) {
-//		 Chrome seems to have a problem with lots of small messages consuming lots of memory.
-//		 I'm guessing for each readyState = 3 event it copies the responseText from its IO system to its JavaScript
-//		 engine and does not clean up all the events until the HTTP request is finished.
-		 return clientMemory > 1024 * 1024;
-//		 }
-//		 else {
-//		return false;//written > 2 * 1024 * 1024;
-//		 }
+			// if (chrome) {
+			// Chrome seems to have a problem with lots of small messages consuming lots of memory.
+			// I'm guessing for each readyState = 3 event it copies the responseText from its IO system to its
+			// JavaScript
+			// engine and does not clean up all the events until the HTTP request is finished.
+			return clientMemory > 1024 * 1024;
+			// }
+			// else {
+			// return false;//written > 2 * 1024 * 1024;
+			// }
 		}
 	}
 	
