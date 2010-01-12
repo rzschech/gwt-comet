@@ -46,6 +46,8 @@ import com.google.gwt.user.client.Timer;
  */
 public class CometClient {
 	
+	private static boolean domainOverridden;
+	
 	private final String url;
 	private final CometSerializer serializer;
 	private final CometListener listener;
@@ -330,6 +332,26 @@ public class CometClient {
 	// TODO precompile all regexps
 	public native static JsArrayString split(String string, String separator) /*-{
 		return string.split(separator);
+	}-*/;
+	
+	public native static String getDomain() /*-{
+		return $doc.domain;
+	}-*/;
+	
+
+	public static String getOverriddenDomain() {
+		return domainOverridden ? getDomain() : null;
+	}
+	
+	public static void setDomain(String domain) {
+		if (!domain.equals(getDomain())) {
+			domainOverridden = true;
+			setDomain0(domain);
+		}
+	}
+	
+	private native static void setDomain0(String domain) /*-{
+		$doc.domain = domain;
 	}-*/;
 	
 	/*

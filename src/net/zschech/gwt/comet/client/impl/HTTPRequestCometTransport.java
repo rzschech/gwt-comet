@@ -82,7 +82,6 @@ public class HTTPRequestCometTransport extends CometTransport {
 		try {
 			xmlHttpRequest.open("GET", getUrl());
 			xmlHttpRequest.setRequestHeader("Accept", "text/plain");
-			xmlHttpRequest.setRequestHeader("Cache-Control", "no-cache");
 			xmlHttpRequest.setOnReadyStateChange(new ReadyStateChangeHandler() {
 				@Override
 				public void onReadyStateChange(XMLHttpRequest request) {

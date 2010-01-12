@@ -48,7 +48,7 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  * e(error) An error message with the error code
  * 
  * h() A heartbeat message
- *
+ * 
  * r() A refresh message
  * 
  * s(string) A string message
@@ -68,13 +68,25 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	@Override
 	public void initiate(CometClient client, CometListener listener) {
 		super.initiate(client, listener);
-		iframe = createIFrame(this);
+		StringBuilder html = new StringBuilder("<html>");
+		String overriddenDomain = CometClient.getOverriddenDomain();
+		if (overriddenDomain != null) {
+			html.append("<script>document.domain='").append(overriddenDomain).append("'</script>");
+		}
+		html.append("<iframe src=''></iframe></html>");
+		
+		iframe = createIFrame(this, html.toString());
 	}
 	
 	@Override
 	public void connect() {
 		expectingDisconnection = false;
-		iframe.setSrc(getUrl());
+		String url = getUrl();
+		String overriddenDomain = CometClient.getOverriddenDomain();
+		if (overriddenDomain != null) {
+			url += "&domain=" + overriddenDomain;
+		}
+		iframe.setSrc(url);
 	}
 	
 	@Override
@@ -84,12 +96,12 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		body = null;
 	}
 	
-	private static native IFrameElement createIFrame(IEHTMLFileCometTransport client) /*-{
+	private static native IFrameElement createIFrame(IEHTMLFileCometTransport client, String html) /*-{
 		var htmlfile = new ActiveXObject("htmlfile");
 		htmlfile.open();
-		htmlfile.write("<html><iframe src=''></iframe></html>");
+		htmlfile.write(html);
 		htmlfile.close();
-
+		
 		htmlfile.parentWindow.s = $entry(function(message) {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onString(Ljava/lang/String;)(message);
 		});

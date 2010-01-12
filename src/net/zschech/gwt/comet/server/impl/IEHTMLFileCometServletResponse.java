@@ -37,13 +37,14 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	// IE requires padding to start processing the page.
 	private static final int PADDING_REQUIRED = 256;
 	
-	private static final String HEAD = "<html><body onload='parent.d()'><script>parent.c(";
+	private static final String HEAD = "<html><body onload='parent.d()'><script>";
+	private static final String MID = "parent.c(";
 	private static final String TAIL = ");var s=parent.s;var o=parent.o;var h=parent.h;</script>";
 	
 	private static final String PADDING_STRING;
 	static {
 		// the required padding minus the length of the heading
-		int capacity = PADDING_REQUIRED - HEAD.length() - TAIL.length();
+		int capacity = PADDING_REQUIRED - HEAD.length() - MID.length() - TAIL.length();
 		char[] padding = new char[capacity];
 		for (int i = 0; i < capacity; i++) {
 			padding[i] = ' ';
@@ -61,8 +62,16 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 		
 		super.initiate();
 		
-		String heading = HEAD + getHeartbeat() + TAIL;
-		writer.append(heading);
+		writer.append(HEAD);
+		String domain = getRequest().getParameter("domain");
+		if (domain != null) {
+			writer.append("document.domain='");
+			writer.append(domain);
+			writer.append("';");
+		}
+		writer.append(MID);
+		writer.append(Integer.toString(getHeartbeat()));
+		writer.append(TAIL);
 	}
 	
 	@Override
@@ -89,7 +98,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 		getResponse().setContentType("text/html");
 		writer.append("<html><script>parent.e(").append(Integer.toString(statusCode));
 		if (message != null) {
-			writer.append(",\'").append(escapeString(message)).append('\'');
+			writer.append(",'").append(escapeString(message)).append('\'');
 		}
 		writer.append(")</script></html>");
 	}
