@@ -61,6 +61,7 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  */
 public class IEHTMLFileCometTransport extends CometTransport {
 	
+	private String domain;
 	private IFrameElement iframe;
 	private BodyElement body;
 	private boolean expectingDisconnection;
@@ -68,23 +69,24 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	@Override
 	public void initiate(CometClient client, CometListener listener) {
 		super.initiate(client, listener);
+		domain = getDomain(getDocumentDomain(), getUrl());
+		
 		StringBuilder html = new StringBuilder("<html>");
-		String overriddenDomain = CometClient.getOverriddenDomain();
-		if (overriddenDomain != null) {
-			html.append("<script>document.domain='").append(overriddenDomain).append("'</script>");
+		if (domain != null) {
+			html.append("<script>document.domain='").append(domain).append("'</script>");
 		}
 		html.append("<iframe src=''></iframe></html>");
 		
 		iframe = createIFrame(this, html.toString());
+		
 	}
 	
 	@Override
 	public void connect() {
 		expectingDisconnection = false;
 		String url = getUrl();
-		String overriddenDomain = CometClient.getOverriddenDomain();
-		if (overriddenDomain != null) {
-			url += "&domain=" + overriddenDomain;
+		if (domain != null) {
+			url += "&domain=" + domain;
 		}
 		iframe.setSrc(url);
 	}
@@ -129,6 +131,42 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		};
 		
 		return htmlfile.documentElement.getElementsByTagName("iframe").item(0);
+	}-*/;
+	
+	private native static String getDocumentDomain() /*-{
+		return $doc.domain;
+	}-*/;
+
+	private native static void setDocumentDomain(String domain) /*-{
+		$doc.domain = domain;
+	}-*/;
+	
+	private native static String getDomain(String documentDomain, String url) /*-{
+ 		var urlParts = /(^https?:)?(\/\/(([^:\/\?#]+)(:(\d+))?))?([^\?#]*)/.exec(url);
+        var urlDomain = urlParts[4];
+        
+        if (!urlDomain || documentDomain == urlDomain) {
+        	return null;
+        }
+        
+        var documentDomainParts = urlDomain.split('.');
+        var urlDomainParts = urlDomain.split('.');
+        
+        var d = documentDomainParts.length - 1;
+        var u = urlDomainParts.length - 1;
+        var resultDomainParts = [];
+        
+        while (d > 0 && u > 0) {
+        	if (documentDomainParts[d] == urlDomainParts[u]) {
+        		resultDomainParts.push(urlDomainParts[d]);
+        		d--;
+        		u--;
+        	}
+        	else {
+        		break;
+        	}
+        }
+        return resultDomainParts.reverse().join('.')
 	}-*/;
 	
 	private void collect() {
