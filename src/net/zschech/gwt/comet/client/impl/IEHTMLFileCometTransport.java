@@ -149,22 +149,17 @@ public class IEHTMLFileCometTransport extends CometTransport {
         	return null;
         }
         
-        var documentDomainParts = urlDomain.split('.');
+        var documentDomainParts = documentDomain.split('.');
         var urlDomainParts = urlDomain.split('.');
         
         var d = documentDomainParts.length - 1;
         var u = urlDomainParts.length - 1;
         var resultDomainParts = [];
         
-        while (d > 0 && u > 0) {
-        	if (documentDomainParts[d] == urlDomainParts[u]) {
-        		resultDomainParts.push(urlDomainParts[d]);
+        while (d >= 0 && u >= 0 && documentDomainParts[d] == urlDomainParts[u]) {
+        		resultDomainParts.push(urlDomainParts[u]);
         		d--;
         		u--;
-        	}
-        	else {
-        		break;
-        	}
         }
         return resultDomainParts.reverse().join('.')
 	}-*/;
