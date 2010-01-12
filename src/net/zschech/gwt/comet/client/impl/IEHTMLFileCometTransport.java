@@ -69,7 +69,7 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	@Override
 	public void initiate(CometClient client, CometListener listener) {
 		super.initiate(client, listener);
-		domain = getDomain(getDocumentDomain(), getUrl());
+		domain = getDomain(getDocumentDomain(), client.getUrl());
 		
 		StringBuilder html = new StringBuilder("<html>");
 		if (domain != null) {
