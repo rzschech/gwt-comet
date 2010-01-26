@@ -34,7 +34,7 @@ import org.mortbay.jetty.servlet.Context.SContext;
  * 
  * @author Richard Zschech
  */
-public class JettyAsyncServlet extends SessionAccessAsyncServlet {
+public class JettyAsyncServlet extends BlockingAsyncServlet {
 	
 	private SessionManager sessionManager;
 	
@@ -45,8 +45,9 @@ public class JettyAsyncServlet extends SessionAccessAsyncServlet {
 	}
 	
 	@Override
-	protected void access(HttpSession httpSession) {
+	protected boolean access(HttpSession httpSession) {
 		sessionManager.access(httpSession, false);
+		return true;
 	}
 	
 	@Override

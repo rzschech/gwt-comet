@@ -59,12 +59,14 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	private final int heartbeat;
 	
 	private Flushable flushable;
+	private OutputStream asyncOutputStream;
 	protected Writer writer;
 	
 	private boolean terminated;
 	private boolean suspended;
 	
 	private Object suspendInfo;
+	private volatile long lastWriteTime;
 	private ScheduledFuture<?> heartbeatFuture;
 	private ScheduledFuture<?> sessionKeepAliveFuture;
 	
@@ -90,6 +92,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	
 	protected OutputStream getOutputStream(OutputStream outputStream) {
 		return outputStream;
+	}
+	
+	public OutputStream getAsyncOutputStream() {
+		return asyncOutputStream;
 	}
 	
 	protected boolean isDeRPC() {
@@ -136,21 +142,23 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		return session;
 	}
 	
-	public synchronized void scheduleSessionKeepAlive() {
+	synchronized void scheduleSessionKeepAlive() {
 		if (sessionKeepAliveFuture != null) {
 			sessionKeepAliveFuture.cancel(false);
 		}
 		sessionKeepAliveFuture = async.scheduleSessionKeepAlive(this, session);
 	}
 	
-	private void scheduleHeartbeat() {
+	void scheduleHeartbeat() {
 		assert Thread.holdsLock(this);
+		lastWriteTime = System.currentTimeMillis();
 		if (heartbeatFuture != null) {
 			heartbeatFuture.cancel(false);
 		}
 		heartbeatFuture = async.scheduleHeartbeat(this, session);
 	}
 	
+	@Override
 	public void sendError(int statusCode) throws IOException {
 		sendError(statusCode, null);
 	}
@@ -179,8 +187,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		response.setHeader("Cache-Control", "no-cache");
 		response.setCharacterEncoding("UTF-8");
 		
-		OutputStream outputStream = response.getOutputStream();
 		flushable = async.getFlushable(this);
+		
+		OutputStream outputStream = response.getOutputStream();
+		asyncOutputStream = outputStream = async.getOutputStream(outputStream);
 		
 		String acceptEncoding = request.getHeader("Accept-Encoding");
 		if (acceptEncoding != null && acceptEncoding.contains("deflate")) {
@@ -188,8 +198,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			outputStream = new DeflaterOutputStream(outputStream);
 		}
 		
-		outputStream = getOutputStream(outputStream);
-		writer = new OutputStreamWriter(outputStream, "UTF-8");
+		writer = new OutputStreamWriter(getOutputStream(asyncOutputStream), "UTF-8");
 		
 		scheduleHeartbeat();
 		getSession(false);
@@ -238,9 +247,15 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 				// Also Jetty and possibly other web servers reuse the HttpServletRequests so we can't assume they are still
 				// valid after they have been suspended
 				request = null;
+				
+				if (!(async instanceof BlockingAsyncServlet)) {
+					suspendInfo = async.suspend(this, s);
+				}
 			}
 			
-			suspendInfo = async.suspend(this, s);
+			if (async instanceof BlockingAsyncServlet) {
+				async.suspend(this, s);
+			}
 		}
 		catch (IOException e) {
 			servlet.log("Error suspending response", e);
@@ -251,7 +266,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 	}
 	
-	public Object getSuspendInfo() {
+	synchronized Object getSuspendInfo() {
 		return suspendInfo;
 	}
 	
@@ -334,7 +349,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 	}
 	
-	private void flush() throws IOException {
+	void flush() throws IOException {
 		assert Thread.holdsLock(this);
 		writer.flush();
 		if (flushable != null) {
@@ -342,7 +357,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 	}
 	
-	protected void setTerminated(boolean serverInitiated) {
+	void setTerminated(boolean serverInitiated) {
 		assert Thread.holdsLock(this);
 		
 		terminated = true;
@@ -368,10 +383,28 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 		
 		if (suspended) {
-			async.terminate(this, session, suspendInfo);
+			async.terminate(this, session, serverInitiated, suspendInfo);
 		}
 		
 		servlet.cometTerminated(this, serverInitiated);
+	}
+	
+	private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
+	
+	long getHeartbeatScheduleTime() throws IllegalStateException {
+		System.out.println(lastWriteTime);
+		return heartbeat - (System.currentTimeMillis() - lastWriteTime);
+	}
+	
+	long getSessionKeepAliveScheduleTime() throws IllegalStateException {
+		assert session != null;
+		HttpSession httpSession = session.getHttpSession();
+		int maxInactiveInterval = httpSession.getMaxInactiveInterval();
+		if (maxInactiveInterval < 0) {
+			return Long.MAX_VALUE;
+		}
+		long lastAccessedTime = Math.max(session.getLastAccessedTime(), httpSession.getLastAccessedTime());
+		return (maxInactiveInterval * 1000) - (System.currentTimeMillis() - lastAccessedTime) - SESSION_KEEP_ALIVE_BUFFER;
 	}
 	
 	protected abstract void doSendError(int statusCode, String message) throws IOException;
@@ -403,11 +436,12 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 	}
 	
-	protected synchronized boolean checkSessionQueue(boolean empty) {
+	boolean checkSessionQueue(boolean empty) {
+		assert Thread.holdsLock(this);
 		return !terminated && session != null && session.isValid() && (empty ? session.getQueue().isEmpty() : !session.getQueue().isEmpty());
 	}
 	
-	protected synchronized void writeSessionQueue(boolean flush) throws IOException {
+	void writeSessionQueue(boolean flush) throws IOException {
 		assert Thread.holdsLock(this);
 		
 		if (!terminated && session.isValid()) {

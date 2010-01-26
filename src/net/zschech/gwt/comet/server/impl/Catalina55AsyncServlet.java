@@ -14,37 +14,44 @@ import javax.servlet.http.HttpSession;
  * 
  * @author Richard Zschech
  */
-public class Catalina55AsyncServlet extends SessionAccessAsyncServlet {
+public class Catalina55AsyncServlet extends BlockingAsyncServlet {
 	
 	private Field sessionField;
 	private Method accessMethod;
 	
 	@Override
-	protected void access(HttpSession httpSession) {
+	protected boolean access(HttpSession httpSession) {
 		try {
 			Field sessionField = getSessionField(httpSession);
 			sessionField.setAccessible(true);
 			Object catalinaSession = sessionField.get(httpSession);
 			Method accessMethod = getAccessMethod(catalinaSession);
 			accessMethod.invoke(catalinaSession, new Object[0]);
+			return true;
 		}
 		catch (IllegalArgumentException e) {
 			log("Error updating session last access time", e);
+			return false;
 		}
 		catch (IllegalAccessException e) {
 			log("Error updating session last access time", e);
+			return false;
 		}
 		catch (SecurityException e) {
 			log("Error updating session last access time", e);
+			return false;
 		}
 		catch (NoSuchFieldException e) {
 			log("Error updating session last access time", e);
+			return false;
 		}
 		catch (NoSuchMethodException e) {
 			log("Error updating session last access time", e);
+			return false;
 		}
 		catch (InvocationTargetException e) {
 			log("Error updating session last access time", e);
+			return false;
 		}
 	}
 	

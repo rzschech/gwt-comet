@@ -46,7 +46,7 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	}
 	
 	@Override
-	public void doSuspend() throws IOException {
+	protected void doSuspend() throws IOException {
 		int paddingRequired;
 		String paddingParameter = getRequest().getParameter("padding");
 		if (paddingParameter != null) {

@@ -17,14 +17,9 @@ package net.zschech.gwt.comet.server.impl;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpSession;
 
 /**
  * This AsyncServlet implementation blocks the HTTP request processing thread.
@@ -36,42 +31,9 @@ import javax.servlet.http.HttpSession;
  */
 public class BlockingAsyncServlet extends AsyncServlet {
 	
-	private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
-	
-	private ScheduledExecutorService executor;
-	
-	public static final String BATCH_SIZE = "net.zschech.gwt.comet.server.batch.size";
-	
-	private int batchSize = 10;
-	
 	@Override
 	public void init(ServletContext context) throws ServletException {
 		super.init(context);
-		
-		executor = new RemoveOnCancelScheduledThreadPoolExecutor(1, new ThreadFactory() {
-			@Override
-			public Thread newThread(Runnable runnable) {
-				return new Thread(runnable, "gwt-comet heatbeat " + getServletContext().getServletContextName());
-			}
-		});
-		
-		String batchSizeString = context.getInitParameter(BATCH_SIZE);
-		if (batchSizeString != null) {
-			try {
-				batchSize = Integer.parseInt(batchSizeString);
-				if (batchSize <= 0) {
-					throw new ServletException("Invalid " + BATCH_SIZE + " value: " + batchSizeString);
-				}
-			}
-			catch (NumberFormatException e) {
-				throw new ServletException("Invalid " + BATCH_SIZE + " value: " + batchSizeString);
-			}
-		}
-	}
-	
-	@Override
-	protected void shutdown() {
-		executor.shutdown();
 	}
 	
 	@Override
@@ -82,7 +44,12 @@ public class BlockingAsyncServlet extends AsyncServlet {
 			try {
 				synchronized (response) {
 					while (!response.isTerminated()) {
-						response.wait();
+						long heartBeatTime = response.getHeartbeatScheduleTime();
+						if (heartBeatTime <= 0) {
+							response.heartbeat();
+							heartBeatTime = response.getHeartbeat();
+						}
+						response.wait(heartBeatTime);
 					}
 				}
 			}
@@ -96,14 +63,25 @@ public class BlockingAsyncServlet extends AsyncServlet {
 			
 			try {
 				try {
-					while (session.isValid() && !response.isTerminated()) {
-						synchronized (session) {
+					synchronized (response) {
+						while (session.isValid() && !response.isTerminated()) {
 							while (response.checkSessionQueue(true)) {
-								session.wait();
+								long sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
+								System.out.println(sessionKeepAliveTime);
+								if (sessionKeepAliveTime <= 0) {
+									response.terminate();
+								}
+								else {
+									long heartBeatTime = response.getHeartbeatScheduleTime();
+									if (heartBeatTime <= 0) {
+										response.heartbeat();
+										heartBeatTime = response.getHeartbeat();
+									}
+									response.wait(Math.min(sessionKeepAliveTime, heartBeatTime));
+								}
 							}
+							response.writeSessionQueue(true);
 						}
-						
-						response.writeSessionQueue(true);
 					}
 				}
 				catch (InterruptedException e) {
@@ -123,80 +101,28 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	}
 	
 	@Override
-	public void terminate(CometServletResponseImpl response, final CometSessionImpl session, Object suspendInfo) {
-		assert !Thread.holdsLock(response);
-		if (session == null) {
-			synchronized (response) {
-				response.notifyAll();
-			}
-		}
-		else {
-			assert !Thread.holdsLock(session);
-			// we need to release the lock on the response before locking the session to prevent deadlocking with
-			// the suspend method above which locks the session then the response.
-			executor.execute(new Runnable() {
-				public void run() {
-					synchronized (session) {
-						session.notifyAll();
-					}
-				}
-			});
-		}
+	public void terminate(CometServletResponseImpl response,final CometSessionImpl session,  boolean serverInitiated, Object suspendInfo) {
+		assert Thread.holdsLock(response);
+		response.notifyAll();
 	}
 	
 	@Override
 	public void invalidate(CometSessionImpl session) {
-		synchronized (session) {
-			session.notifyAll();
+		CometServletResponseImpl response = session.getResponse();
+		if (response != null) {
+			synchronized (response) {
+				response.notifyAll();
+			}
 		}
 	}
 	
 	@Override
 	public void enqueued(CometSessionImpl session) {
-		synchronized (session) {
-			session.notifyAll();
-		}
-	}
-	
-	@Override
-	public ScheduledFuture<?> scheduleHeartbeat(final CometServletResponseImpl response, CometSessionImpl session) {
-		assert Thread.holdsLock(response);
-		return executor.schedule(new Runnable() {
-			@Override
-			public void run() {
-				response.tryHeartbeat();
-			}
-		}, response.getHeartbeat(), TimeUnit.MILLISECONDS);
-	}
-	
-	@Override
-	public ScheduledFuture<?> scheduleSessionKeepAlive(final CometServletResponseImpl response, final CometSessionImpl session) {
-		assert Thread.holdsLock(response);
-		try {
-			long keepAliveTime = getKeepAliveTime(session);
-			if (keepAliveTime <= 0) {
-				response.tryTerminate();
-				return null;
-			}
-			else {
-				return executor.schedule(new Runnable() {
-					@Override
-					public void run() {
-						response.scheduleSessionKeepAlive();
-					}
-				}, keepAliveTime, TimeUnit.MILLISECONDS);
+		CometServletResponseImpl response = session.getResponse();
+		if (response != null) {
+			synchronized (response) {
+				response.notifyAll();
 			}
 		}
-		catch (IllegalStateException e) {
-			// the session has been invalidated
-			response.tryTerminate();
-			return null;
-		}
-	}
-	
-	private long getKeepAliveTime(CometSessionImpl session) throws IllegalStateException {
-		HttpSession httpSession = session.getHttpSession();
-		long lastAccessedTime = Math.max(session.getLastAccessedTime(), httpSession.getLastAccessedTime());
-		return (httpSession.getMaxInactiveInterval() * 1000) - (System.currentTimeMillis() - lastAccessedTime) - SESSION_KEEP_ALIVE_BUFFER;
 	}
 }

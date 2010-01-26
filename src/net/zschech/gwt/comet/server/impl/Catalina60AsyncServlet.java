@@ -15,9 +15,9 @@ import org.apache.catalina.session.StandardSessionFacade;
  * 
  * @author Richard Zschech
  */
-public class Catalina60AsyncServlet extends SessionAccessAsyncServlet {
+public class Catalina60AsyncServlet extends BlockingAsyncServlet {
 	
-	private Field sessionField;
+	private final Field sessionField;
 	
 	public Catalina60AsyncServlet() throws SecurityException, NoSuchFieldException {
 		sessionField = StandardSessionFacade.class.getDeclaredField("session");
@@ -25,16 +25,19 @@ public class Catalina60AsyncServlet extends SessionAccessAsyncServlet {
 	}
 	
 	@Override
-	protected void access(HttpSession httpSession) {
+	protected boolean access(HttpSession httpSession) {
 		try {
 			Session catalinaSession = (Session) sessionField.get(httpSession);
 			catalinaSession.access();
+			return true;
 		}
 		catch (IllegalArgumentException e) {
 			log("Error updating session last access time", e);
+			return false;
 		}
 		catch (IllegalAccessException e) {
 			log("Error updating session last access time", e);
+			return false;
 		}
 	}
 }

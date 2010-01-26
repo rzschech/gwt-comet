@@ -17,11 +17,13 @@ package net.zschech.gwt.comet.server.impl;
 
 import java.io.Flushable;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.util.concurrent.ScheduledFuture;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpSession;
 
 public abstract class AsyncServlet {
 	
@@ -44,6 +46,12 @@ public abstract class AsyncServlet {
 				else if (serverInfo.startsWith("Apache Tomcat/6.")) {
 					// e.g. Apache Tomcat/6.0.18
 					server = "Catalina60";
+				}
+				else if (serverInfo.startsWith("GlassFish v3")) {
+					server = "Grizzly";
+				}
+				else if (serverInfo.startsWith("Google App Engine/")) {
+					server = "GAE";
 				}
 				else {
 					server = null;
@@ -106,23 +114,33 @@ public abstract class AsyncServlet {
 		context.log(message, throwable);
 	}
 	
+	public OutputStream getOutputStream(OutputStream outputStream) {
+		return outputStream;
+	}
+	
 	public abstract Object suspend(CometServletResponseImpl response, CometSessionImpl session) throws IOException;
 	
-	public abstract void terminate(CometServletResponseImpl response, CometSessionImpl session, Object suspendInfo);
+	public abstract void terminate(CometServletResponseImpl response, CometSessionImpl session, boolean serverInitiated, Object suspendInfo);
 	
 	public abstract void invalidate(CometSessionImpl cometSessionImpl);
 	
 	public abstract void enqueued(CometSessionImpl session);
 	
-	public abstract ScheduledFuture<?> scheduleHeartbeat(CometServletResponseImpl response, CometSessionImpl session);
+	protected boolean access(HttpSession httpSession) {
+		return false;
+	}
 	
-	public abstract ScheduledFuture<?> scheduleSessionKeepAlive(CometServletResponseImpl response, CometSessionImpl session);
+	public ScheduledFuture<?> scheduleHeartbeat(CometServletResponseImpl response, CometSessionImpl session) {
+		return null;
+	}
+	
+	public ScheduledFuture<?> scheduleSessionKeepAlive(CometServletResponseImpl response, CometSessionImpl session) {
+		return null;
+	}
 	
 	public Flushable getFlushable(CometServletResponseImpl response) throws IOException {
 		return null;
 	}
-	
-	private boolean logged = false;
 	
 	protected Object get(String path, Object object) {
 		try {
@@ -146,10 +164,7 @@ public abstract class AsyncServlet {
 			return object;
 		}
 		catch (Exception e) {
-			if (!logged) {
-				log("Error accessing underlying socket output stream to improve flushing", e);
-				logged = true;
-			}
+			log("Error accessing underlying objects " + path + " from " + object.getClass().getCanonicalName(), e);
 			return null;
 		}
 	}
