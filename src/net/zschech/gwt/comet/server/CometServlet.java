@@ -56,7 +56,7 @@ import com.google.gwt.user.server.rpc.SerializationPolicy;
 public class CometServlet extends HttpServlet {
 	
 	private static final long serialVersionUID = 820972291784919880L;
-
+	
 	private int heartbeat = 15 * 1000; // 15 seconds by default
 	
 	private transient AsyncServlet async;
@@ -81,7 +81,6 @@ public class CometServlet extends HttpServlet {
 	
 	@Override
 	protected void doGet(final HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		
 		try {
 			int requestHeartbeat = heartbeat;
 			String requestedHeartbeat = request.getParameter("heartbeat");
@@ -123,7 +122,7 @@ public class CometServlet extends HttpServlet {
 			return new IEHTMLFileCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
 		}
 	}
-
+	
 	private void doCometImpl(CometServletResponseImpl response) throws IOException {
 		try {
 			// setup the request
