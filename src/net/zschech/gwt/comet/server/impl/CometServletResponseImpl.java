@@ -198,7 +198,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			outputStream = new DeflaterOutputStream(outputStream);
 		}
 		
-		writer = new OutputStreamWriter(getOutputStream(asyncOutputStream), "UTF-8");
+		writer = new OutputStreamWriter(getOutputStream(outputStream), "UTF-8");
 		
 		scheduleHeartbeat();
 		getSession(false);
