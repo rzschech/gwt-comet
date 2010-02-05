@@ -178,6 +178,9 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			
 			doSendError(statusCode, message);
 		}
+		catch (IllegalStateException e) {
+			servlet.log("Error resetting response to send error: " + e.getMessage());
+		}
 		finally {
 			setTerminated(true);
 		}
