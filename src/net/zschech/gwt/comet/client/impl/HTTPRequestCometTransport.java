@@ -105,6 +105,7 @@ public class HTTPRequestCometTransport extends CometTransport {
 	
 	@Override
 	public void disconnect() {
+		expectingDisconnection = true;
 		if (xmlHttpRequest != null) {
 			xmlHttpRequest.clearOnReadyStateChange();
 			xmlHttpRequest.abort();

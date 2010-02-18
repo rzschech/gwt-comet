@@ -58,6 +58,7 @@ public class OperaEventSourceCometTransport extends CometTransport {
 	@Override
 	public void disconnect() {
 		DOM.setElementAttribute(eventSource, "src", "");
+		listener.onDisconnected();
 	}
 	
 	private static native Element createEventSource(OperaEventSourceCometTransport client) /*-{

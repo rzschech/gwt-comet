@@ -78,7 +78,6 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		html.append("<iframe src=''></iframe></html>");
 		
 		iframe = createIFrame(this, html.toString());
-		
 	}
 	
 	@Override
@@ -94,8 +93,9 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	@Override
 	public void disconnect() {
 		// TODO this does not seem to close the connection immediately.
+		expectingDisconnection = true;
 		iframe.setSrc("");
-		body = null;
+		onDisconnected();
 	}
 	
 	private static native IFrameElement createIFrame(IEHTMLFileCometTransport client, String html) /*-{
@@ -135,10 +135,6 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	
 	private native static String getDocumentDomain() /*-{
 		return $doc.domain;
-	}-*/;
-
-	private native static void setDocumentDomain(String domain) /*-{
-		$doc.domain = domain;
 	}-*/;
 	
 	private native static String getDomain(String documentDomain, String url) /*-{
@@ -201,7 +197,6 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		listener.onConnected(heartbeat);
 	}
 	
-	@SuppressWarnings("unused")
 	private void onDisconnected() {
 		body = null;
 		if (expectingDisconnection) {
