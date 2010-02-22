@@ -381,9 +381,9 @@ public class CometTestEntryPoint implements EntryPoint {
 				
 				for (Serializable m : messages) {
 					String message;
-					if (m instanceof TestData) {
+					if (m instanceof TestData[][]) {
 						log("GWT Serialized");
-						message = ((TestData) m).string;
+						message = ((TestData[][]) m)[0][0].string;
 					}
 					else if (m instanceof String) {
 						log("String");
@@ -435,18 +435,18 @@ public class CometTestEntryPoint implements EntryPoint {
 		});
 	}
 
-	@SerialTypes( mode=SerialMode.RPC, value={ TestData.class })
+	@SerialTypes( mode=SerialMode.RPC, value={ TestData[][].class })
 	public static abstract class RPCTestCometSerializer extends CometSerializer {
 	}
 	
-	@SerialTypes( mode=SerialMode.DE_RPC, value={ TestData.class })
+	@SerialTypes( mode=SerialMode.DE_RPC, value={ TestData[][].class })
 	public static abstract class DeRPCTestCometSerializer extends CometSerializer {
 	}
 	
 	public static class TestData implements Serializable {
 		public String string;
 		public int integer;
-		
+		public Integer[] data = new Integer[1];
 		public TestData() {
 		}
 		
@@ -479,9 +479,9 @@ public class CometTestEntryPoint implements EntryPoint {
 			@Override
 			public void onMessage(List<? extends Serializable> messages) {
 				for (Serializable message : messages) {
-					TestData data = (TestData) message;
-					if (count != data.integer) {
-						log("expected count " + count + " actual " + data.integer);
+					TestData[][] data = (TestData[][]) message;
+					if (count != data[0][0].integer) {
+						log("expected count " + count + " actual " + data[0][0].integer);
 					}
 					count++;
 				}

@@ -69,7 +69,21 @@ public class CometSerializerGenerator extends Generator {
 				SerializableTypeOracleBuilder typesSentFromBrowserBuilder = new SerializableTypeOracleBuilder(logger, context.getPropertyOracle(), typeOracle);
 				
 				for (Class<? extends Serializable> serializable : annotation.value()) {
-					typesSentToBrowserBuilder.addRootType(logger, typeOracle.getType(serializable.getCanonicalName()));
+					int rank = 0;
+					if (serializable.isArray()) {
+						while(serializable.isArray()) {
+							serializable = (Class<? extends Serializable>) serializable.getComponentType();
+							rank++;
+						}
+					}
+						
+					JType resolvedType = typeOracle.getType(serializable.getCanonicalName());
+					while(rank>0) {
+						resolvedType = typeOracle.getArrayType(resolvedType);
+						rank--;
+					}
+					
+					typesSentToBrowserBuilder.addRootType(logger, resolvedType);
 				}
 				
 				// Create a resource file to receive all of the serialization information
