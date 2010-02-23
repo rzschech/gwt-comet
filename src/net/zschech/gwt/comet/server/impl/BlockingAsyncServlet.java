@@ -67,7 +67,6 @@ public class BlockingAsyncServlet extends AsyncServlet {
 						while (session.isValid() && !response.isTerminated()) {
 							while (response.checkSessionQueue(true)) {
 								long sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
-								System.out.println(sessionKeepAliveTime);
 								if (sessionKeepAliveTime <= 0) {
 									response.terminate();
 								}

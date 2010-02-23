@@ -85,7 +85,7 @@ public class ChatServiceImpl extends RemoteServiceServlet implements ChatService
 		
 		// remove the mapping of user name to CometSession
 		users.remove(username, cometSession);
-		httpSession.invalidate(); // TODO does this invalidate the comet session?
+		httpSession.invalidate();
 	}
 	
 	/**

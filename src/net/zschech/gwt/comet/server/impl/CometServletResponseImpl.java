@@ -395,7 +395,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
 	
 	long getHeartbeatScheduleTime() throws IllegalStateException {
-		System.out.println(lastWriteTime);
 		return heartbeat - (System.currentTimeMillis() - lastWriteTime);
 	}
 	

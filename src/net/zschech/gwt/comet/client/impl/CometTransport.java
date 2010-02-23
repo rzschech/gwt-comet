@@ -29,8 +29,8 @@ import com.google.gwt.core.client.GWT;
  */
 public abstract class CometTransport {
 	
-	public static final String MODULE_BASE_PARAMETER = "base";
-	public static final String STRONG_NAME_PARAMETER = "perm";
+	public static final String MODULE_BASE_PARAMETER = "b";
+	public static final String STRONG_NAME_PARAMETER = "p";
 	
 	protected CometClient client;
 	protected CometListener listener;
@@ -49,6 +49,6 @@ public abstract class CometTransport {
 		if (client.getSerializer() != null && client.getSerializer().getMode() == SerialMode.DE_RPC) {
 			url += (url.contains("?") ? "&" : "?") + MODULE_BASE_PARAMETER + '=' + GWT.getModuleBaseURL() + '&' + STRONG_NAME_PARAMETER + '=' + GWT.getPermutationStrongName();
 		}
-		return url + (url.contains("?") ? "&" : "?") + "stamp=" + Integer.toString((int) (Duration.currentTimeMillis() % Integer.MAX_VALUE), Character.MAX_RADIX).toUpperCase();
+		return url + (url.contains("?") ? "&" : "?") + "t=" + Integer.toString((int) (Duration.currentTimeMillis() % Integer.MAX_VALUE), Character.MAX_RADIX).toUpperCase();
 	}
 }
