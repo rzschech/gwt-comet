@@ -39,7 +39,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	
 	private static final String HEAD = "<html><body onload='parent.d()'><script>";
 	private static final String MID = "parent.c(";
-	private static final String TAIL = ");var s=parent.s;var o=parent.o;var h=parent.h;</script>";
+	private static final String TAIL = ");var m=parent.m;var h=parent.h;</script>";
 	
 	private static final String PADDING_STRING;
 	static {
@@ -105,21 +105,25 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	
 	@Override
 	protected void doWrite(List<? extends Serializable> messages) throws IOException {
-		writer.append("<script>");
+		writer.append("<script>m(");
+		boolean first = true;
 		for (Serializable message : messages) {
 			CharSequence string;
-			char event;
 			if (message instanceof CharSequence) {
-				string = escapeString((CharSequence) message);
-				event = 's';
+				string = "]" + escapeString((CharSequence) message);
 			}
 			else {
 				string = escapeObject(serialize(message));
-				event = 'o';
 			}
-			writer.append(event).append("('").append(string).append("');");
+			if (first) {
+				first = false;
+			}
+			else {
+				writer.append(',');
+			}
+			writer.append('\'').append(string).append('\'');
 		}
-		writer.append("</script>");
+		writer.append(")</script>");
 	}
 	
 	@Override

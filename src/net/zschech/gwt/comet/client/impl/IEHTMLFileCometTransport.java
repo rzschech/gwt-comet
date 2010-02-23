@@ -15,13 +15,16 @@
  */
 package net.zschech.gwt.comet.client.impl;
 
-import java.util.Collections;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 import net.zschech.gwt.comet.client.CometClient;
 import net.zschech.gwt.comet.client.CometException;
 import net.zschech.gwt.comet.client.CometListener;
 import net.zschech.gwt.comet.client.CometSerializer;
 
+import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.dom.client.BodyElement;
 import com.google.gwt.dom.client.IFrameElement;
 import com.google.gwt.dom.client.Node;
@@ -51,11 +54,9 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  * 
  * r() A refresh message
  * 
- * s(string) A string message
+ * m(string...) string and gwt serialized object messages
  * 
- * o(string) A gwt serialized object
- * 
- * string and gwt serialized object messages Java Script escaped
+ * string and gwt serialized object messages are Java Script escaped
  * 
  * @author Richard Zschech
  */
@@ -104,11 +105,8 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		htmlfile.write(html);
 		htmlfile.close();
 		
-		htmlfile.parentWindow.s = $entry(function(message) {
-			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onString(Ljava/lang/String;)(message);
-		});
-		htmlfile.parentWindow.o = $entry(function(message) {
-			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onObject(Ljava/lang/String;)(message);
+		htmlfile.parentWindow.m = $entry(function(message) {
+			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onMessages(Lcom/google/gwt/core/client/JsArrayString;)(arguments);
 		});
 		htmlfile.parentWindow.c = $entry(function(heartbeat) {
 			client.@net.zschech.gwt.comet.client.impl.IEHTMLFileCometTransport::onConnected(I)(heartbeat);
@@ -168,26 +166,39 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	}
 	
 	@SuppressWarnings("unused")
-	private void onString(String message) {
+	private void onMessages(JsArrayString arguments) {
 		collect();
-		listener.onMessage(Collections.singletonList(message));
-	}
-	
-	@SuppressWarnings("unused")
-	private void onObject(String message) {
-		collect();
-		CometSerializer serializer = client.getSerializer();
-		if (serializer == null) {
-			listener.onError(new SerializationException("Can not deserialize message with no serializer: " + message), true);
-		}
-		else {
-			try {
-				listener.onMessage(Collections.singletonList(serializer.parse(message)));
+		int length = arguments.length();
+		List<Serializable> messages = new ArrayList<Serializable>(length);
+		for (int i = 0; i < length; i++) {
+			String message = arguments.get(i);
+			switch (message.charAt(0)) {
+			case ']':
+				messages.add(message.substring(1));
+				break;
+			case '[':
+			case 'R':
+			case 'r':
+			case 'f':
+				CometSerializer serializer = client.getSerializer();
+				if (serializer == null) {
+					listener.onError(new SerializationException("Can not deserialize message with no serializer: " + message), true);
+				}
+				else {
+					try {
+						messages.add(serializer.parse(message));
+					}
+					catch (SerializationException e) {
+						listener.onError(e, true);
+					}
+				}
+				break;
+			default:
+				listener.onError(new CometException("Invalid message received: " + message), true);
 			}
-			catch (SerializationException e) {
-				listener.onError(e, true);
-			}
 		}
+		
+		listener.onMessage(messages);
 	}
 	
 	@SuppressWarnings("unused")
