@@ -272,7 +272,7 @@ public class CometServlet extends HttpServlet {
 	}
 	
 	public static CometSession getCometSession(HttpSession httpSession, boolean create) {
-		return getCometSession(httpSession, true, new ConcurrentLinkedQueue<Serializable>());
+		return getCometSession(httpSession, create, new ConcurrentLinkedQueue<Serializable>());
 	}
 	
 	public static CometSession getCometSession(HttpSession httpSession, boolean create, Queue<Serializable> queue) {
