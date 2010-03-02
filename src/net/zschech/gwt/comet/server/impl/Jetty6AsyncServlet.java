@@ -15,9 +15,6 @@
  */
 package net.zschech.gwt.comet.server.impl;
 
-import java.io.Flushable;
-import java.io.IOException;
-
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpSession;
@@ -34,7 +31,7 @@ import org.mortbay.jetty.servlet.Context.SContext;
  * 
  * @author Richard Zschech
  */
-public class JettyAsyncServlet extends BlockingAsyncServlet {
+public class Jetty6AsyncServlet extends BlockingAsyncServlet {
 	
 	private SessionManager sessionManager;
 	
@@ -48,17 +45,5 @@ public class JettyAsyncServlet extends BlockingAsyncServlet {
 	protected boolean access(HttpSession httpSession) {
 		sessionManager.access(httpSession, false);
 		return true;
-	}
-	
-	@Override
-	public Flushable getFlushable(CometServletResponseImpl response) throws IOException {
-		// A hack to get SSL AppOutputStream to flush the underlying socket.
-		// The property path below only works on Jetty.
-		if (response.getRequest().getScheme().equals("https")) {
-			return (Flushable) get("_generator._endp._socket.sockOutput", response.getResponse().getOutputStream());
-		}
-		else {
-			return null;
-		}
 	}
 }

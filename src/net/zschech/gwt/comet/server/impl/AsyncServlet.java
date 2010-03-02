@@ -35,9 +35,12 @@ public abstract class AsyncServlet {
 			if (async == null) {
 				String server;
 				String serverInfo = context.getServerInfo();
-				if (serverInfo.startsWith("jetty-") || serverInfo.startsWith("jetty/")) {
+				if (serverInfo.startsWith("jetty-6") || serverInfo.startsWith("jetty/6")) {
 					// e.g. jetty-6.1.x
-					server = "Jetty";
+					server = "Jetty6";
+				}
+				else if (serverInfo.startsWith("jetty/7")) {
+					server = "Jetty7";
 				}
 				else if (serverInfo.startsWith("Apache Tomcat/5.5.")) {
 					// e.g. Apache Tomcat/5.5.26
@@ -73,7 +76,15 @@ public abstract class AsyncServlet {
 				}
 				
 				try {
-					async.init(context);
+					try {
+						async.init(context);
+					}
+					catch (Throwable e) {
+						context.log("Error initiating " + server + " async servlet handler for server " + serverInfo + ". Falling back to default blocking async servlet handler.", e);
+						context.log("Creating blocking async servlet handler for server " + serverInfo);
+						async = new BlockingAsyncServlet();
+						async.init(context);
+					}
 					context.setAttribute(SERVLET_CONTEXT_KEY, async);
 				}
 				catch (ServletException e) {
