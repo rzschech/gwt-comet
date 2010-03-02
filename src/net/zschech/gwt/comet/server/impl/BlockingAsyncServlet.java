@@ -68,16 +68,22 @@ public class BlockingAsyncServlet extends AsyncServlet {
 							while (response.checkSessionQueue(true)) {
 								long sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
 								if (sessionKeepAliveTime <= 0) {
-									response.terminate();
-								}
-								else {
-									long heartBeatTime = response.getHeartbeatScheduleTime();
-									if (heartBeatTime <= 0) {
-										response.heartbeat();
-										heartBeatTime = response.getHeartbeat();
+									if (access(session.getHttpSession())) {
+										session.setLastAccessedTime(System.currentTimeMillis());
+										sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
 									}
-									response.wait(Math.min(sessionKeepAliveTime, heartBeatTime));
+									else {
+										response.terminate();
+										break;
+									}
 								}
+								
+								long heartBeatTime = response.getHeartbeatScheduleTime();
+								if (heartBeatTime <= 0) {
+									response.heartbeat();
+									heartBeatTime = response.getHeartbeat();
+								}
+								response.wait(Math.min(sessionKeepAliveTime, heartBeatTime));
 							}
 							response.writeSessionQueue(true);
 						}
@@ -100,7 +106,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	}
 	
 	@Override
-	public void terminate(CometServletResponseImpl response,final CometSessionImpl session,  boolean serverInitiated, Object suspendInfo) {
+	public void terminate(CometServletResponseImpl response, final CometSessionImpl session, boolean serverInitiated, Object suspendInfo) {
 		assert Thread.holdsLock(response);
 		response.notifyAll();
 	}

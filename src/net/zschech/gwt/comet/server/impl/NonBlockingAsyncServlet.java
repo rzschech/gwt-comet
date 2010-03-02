@@ -13,6 +13,7 @@ public abstract class NonBlockingAsyncServlet extends AsyncServlet {
 	
 	private ScheduledExecutorService scheduledExecutor;
 	
+	@Override
 	protected void init(ServletContext context) throws ServletException {
 		super.init(context);
 		
@@ -28,6 +29,7 @@ public abstract class NonBlockingAsyncServlet extends AsyncServlet {
 		});
 	}
 	
+	@Override
 	protected void shutdown() {
 		scheduledExecutor.shutdown();
 	}
@@ -36,20 +38,9 @@ public abstract class NonBlockingAsyncServlet extends AsyncServlet {
 		return scheduledExecutor;
 	}
 
+	@Override
 	public ScheduledFuture<?> scheduleHeartbeat(final CometServletResponseImpl response, CometSessionImpl session) {
 		assert Thread.holdsLock(response);
-		
-		if (session != null) {
-			try {
-				access(session.getHttpSession());
-			}
-			catch (IllegalStateException e) {
-				// the session has been invalidated
-				response.tryTerminate();
-				return null;
-			}
-		}
-		
 		return scheduledExecutor.schedule(new Runnable() {
 			@Override
 			public void run() {
@@ -58,6 +49,7 @@ public abstract class NonBlockingAsyncServlet extends AsyncServlet {
 		}, response.getHeartbeat(), TimeUnit.MILLISECONDS);
 	}
 	
+	@Override
 	public ScheduledFuture<?> scheduleSessionKeepAlive(final CometServletResponseImpl response, final CometSessionImpl session) {
 		assert Thread.holdsLock(response);
 		try {
@@ -78,6 +70,7 @@ public abstract class NonBlockingAsyncServlet extends AsyncServlet {
 				return scheduledExecutor.schedule(new Runnable() {
 					@Override
 					public void run() {
+						session.setLastAccessedTime(System.currentTimeMillis());
 						response.scheduleSessionKeepAlive();
 					}
 				}, keepAliveTime, TimeUnit.MILLISECONDS);
