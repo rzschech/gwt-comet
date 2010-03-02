@@ -42,7 +42,7 @@ public class SerializeTestServlet extends CometServlet {
 					for (int i = 0; i < count; i++) {
 						List<Serializable> messages = new ArrayList<Serializable>(batch);
 						for (int b = 0; b < batch; b++) {
-							messages.add(new TestData[][]{{new TestData(c++, "xxx")}});
+							messages.add(new TestData(c++, "xxx"));
 						}
 						synchronized (cometResponse) {
 							if (!cometResponse.isTerminated()) {
