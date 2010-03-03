@@ -1,7 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE web-app PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN" "http://java.sun.com/dtd/web-app_2_3.dtd">
 <web-app>
- 	<!-- Servlets -->
+
+	<!--
+		Listener for shutting down the comet processor when the ServletContext
+		is destroyed
+	-->
+	<listener>
+		<listener-class>net.zschech.gwt.comet.server.CometServletContextListener</listener-class>
+	</listener>
+
+	<!--
+		Listener for invalidating CometSessions when HTTPSessions are
+		invalidated
+	-->
+	<listener>
+		<listener-class>net.zschech.gwt.comet.server.CometHttpSessionListener</listener-class>
+	</listener>
+
+	<!-- the RPC service called by the client -->
+	<servlet>
+		<servlet-name>chatService</servlet-name>
+		<servlet-class>net.zschech.gwt.chat.server.ChatServiceImpl</servlet-class>
+	</servlet>
+
+	<!-- the comet servlet for streaming messages to the client -->
+	<servlet>
+		<servlet-name>chatComet</servlet-name>
+		<servlet-class>net.zschech.gwt.comet.server.CometServlet</servlet-class>
+	</servlet>
+
+
+	<!-- Servlets -->
 	<servlet>
 		<servlet-name>throughputServlet</servlet-name>
 		<servlet-class>net.zschech.gwt.comettest.server.ThroughputTestServlet</servlet-class>
@@ -26,7 +56,16 @@
 		<servlet-name>errorServlet</servlet-name>
 		<servlet-class>net.zschech.gwt.comettest.server.ErrorTestServlet</servlet-class>
 	</servlet>
-	
+
+	<servlet-mapping>
+		<servlet-name>chatService</servlet-name>
+		<url-pattern>/net.zschech.gwt.chat.Chat/chat</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>chatComet</servlet-name>
+		<url-pattern>/net.zschech.gwt.chat.Chat/comet</url-pattern>
+	</servlet-mapping>
+
 	<servlet-mapping>
 		<servlet-name>throughputServlet</servlet-name>
 		<url-pattern>/net.zschech.gwt.comettest.CometTest/throughput</url-pattern>
@@ -51,14 +90,14 @@
 		<servlet-name>errorServlet</servlet-name>
 		<url-pattern>/net.zschech.gwt.comettest.CometTest/error</url-pattern>
 	</servlet-mapping>
-	
+
 	<session-config>
 		<session-timeout>1</session-timeout>
 	</session-config>
-	
- 	<!-- Default page to serve -->
+
+	<!-- Default page to serve -->
 	<welcome-file-list>
 		<welcome-file>CometTest.html</welcome-file>
 	</welcome-file-list>
-	
+
 </web-app>
