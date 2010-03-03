@@ -15,13 +15,12 @@
  */
 package net.zschech.gwt.comet.server.impl;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpSession;
-
-import org.eclipse.jetty.server.SessionManager;
-import org.eclipse.jetty.servlet.ServletContextHandler.Context;
-import org.eclipse.jetty.webapp.WebAppContext;
 
 /**
  * An extension of {@link BlockingAsyncServlet} for Jetty.
@@ -33,17 +32,44 @@ import org.eclipse.jetty.webapp.WebAppContext;
  */
 public class Jetty7AsyncServlet extends BlockingAsyncServlet {
 	
-	private SessionManager sessionManager;
+	private Object sessionManager;
+	private Method accessMethod;
 	
 	@Override
 	public void init(ServletContext context) throws ServletException {
 		super.init(context);
-		sessionManager = ((WebAppContext)((Context)context).getContextHandler()).getSessionHandler().getSessionManager();
+		try {
+			sessionManager = get("this$0._sessionHandler._sessionManager", context);
+			if (sessionManager == null) {
+				throw new ServletException("Error getting session manager");
+			}
+			accessMethod = sessionManager.getClass().getMethod("access", HttpSession.class, Boolean.TYPE);
+		}
+		catch (SecurityException e) {
+			throw new ServletException(e);
+		}
+		catch (NoSuchMethodException e) {
+			throw new ServletException(e);
+		}
 	}
 	
 	@Override
 	protected boolean access(HttpSession httpSession) {
-		sessionManager.access(httpSession, false);
-		return true;
+		try {
+			accessMethod.invoke(sessionManager, httpSession, false);
+			return true;
+		}
+		catch (IllegalArgumentException e) {
+			log("Error updating session last access time", e);
+			return false;
+		}
+		catch (IllegalAccessException e) {
+			log("Error updating session last access time", e);
+			return false;
+		}
+		catch (InvocationTargetException e) {
+			log("Error updating session last access time", e);
+			return false;
+		}
 	}
 }
