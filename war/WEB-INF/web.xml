@@ -33,28 +33,24 @@
 
 	<!-- Servlets -->
 	<servlet>
-		<servlet-name>throughputServlet</servlet-name>
-		<servlet-class>net.zschech.gwt.comettest.server.ThroughputTestServlet</servlet-class>
-	</servlet>
-	<servlet>
-		<servlet-name>latencyServlet</servlet-name>
-		<servlet-class>net.zschech.gwt.comettest.server.LatencyTestServlet</servlet-class>
-	</servlet>
-	<servlet>
 		<servlet-name>connectionServlet</servlet-name>
 		<servlet-class>net.zschech.gwt.comettest.server.ConnectionTestServlet</servlet-class>
+	</servlet>
+	<servlet>
+		<servlet-name>errorServlet</servlet-name>
+		<servlet-class>net.zschech.gwt.comettest.server.ErrorTestServlet</servlet-class>
 	</servlet>
 	<servlet>
 		<servlet-name>escapeServlet</servlet-name>
 		<servlet-class>net.zschech.gwt.comettest.server.EscapeTestServlet</servlet-class>
 	</servlet>
 	<servlet>
-		<servlet-name>serializeServlet</servlet-name>
-		<servlet-class>net.zschech.gwt.comettest.server.SerializeTestServlet</servlet-class>
+		<servlet-name>messagingServlet</servlet-name>
+		<servlet-class>net.zschech.gwt.comettest.server.MessagingTestServlet</servlet-class>
 	</servlet>
 	<servlet>
-		<servlet-name>errorServlet</servlet-name>
-		<servlet-class>net.zschech.gwt.comettest.server.ErrorTestServlet</servlet-class>
+		<servlet-name>cometTestService</servlet-name>
+		<servlet-class>net.zschech.gwt.comettest.server.CometTestServiceImpl</servlet-class>
 	</servlet>
 
 	<servlet-mapping>
@@ -67,14 +63,6 @@
 	</servlet-mapping>
 
 	<servlet-mapping>
-		<servlet-name>throughputServlet</servlet-name>
-		<url-pattern>/net.zschech.gwt.comettest.CometTest/throughput</url-pattern>
-	</servlet-mapping>
-	<servlet-mapping>
-		<servlet-name>latencyServlet</servlet-name>
-		<url-pattern>/net.zschech.gwt.comettest.CometTest/latency</url-pattern>
-	</servlet-mapping>
-	<servlet-mapping>
 		<servlet-name>connectionServlet</servlet-name>
 		<url-pattern>/net.zschech.gwt.comettest.CometTest/connection</url-pattern>
 	</servlet-mapping>
@@ -83,12 +71,24 @@
 		<url-pattern>/net.zschech.gwt.comettest.CometTest/escape</url-pattern>
 	</servlet-mapping>
 	<servlet-mapping>
-		<servlet-name>serializeServlet</servlet-name>
-		<url-pattern>/net.zschech.gwt.comettest.CometTest/serialize</url-pattern>
-	</servlet-mapping>
-	<servlet-mapping>
 		<servlet-name>errorServlet</servlet-name>
 		<url-pattern>/net.zschech.gwt.comettest.CometTest/error</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>messagingServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/throughput</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>messagingServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/latency</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>messagingServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/order</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>cometTestService</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/cometTestService</url-pattern>
 	</servlet-mapping>
 
 	<session-config>
