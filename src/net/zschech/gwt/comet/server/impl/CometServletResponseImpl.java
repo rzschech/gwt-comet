@@ -142,6 +142,11 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		return session;
 	}
 	
+	boolean hasSession() {
+		assert Thread.holdsLock(this);
+		return session != null;
+	}
+	
 	synchronized void scheduleSessionKeepAlive() {
 		if (sessionKeepAliveFuture != null) {
 			sessionKeepAliveFuture.cancel(false);

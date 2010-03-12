@@ -97,12 +97,19 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	
 	private void checkLength() throws IOException {
 		int count = countOutputStream.getCount();
-		if (!refresh && isOverRefreshLength(count)) {
-			refresh = true;
-			doRefresh();
+		if (hasSession()) {
+			if (isOverRefreshLength(count)) {
+				terminate();
+			}
 		}
-		else if (isOverTerminateLength(count)) {
-			terminate();
+		else { 
+			if (!refresh && hasSession() && isOverRefreshLength(count)) {
+				refresh = true;
+				doRefresh();
+			}
+			else if (isOverTerminateLength(count)) {
+				terminate();
+			}
 		}
 	}
 	
