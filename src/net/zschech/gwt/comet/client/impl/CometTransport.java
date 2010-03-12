@@ -40,15 +40,15 @@ public abstract class CometTransport {
 		this.listener = listener;
 	}
 	
-	public abstract void connect();
+	public abstract void connect(int connectionCount);
 	
 	public abstract void disconnect();
 	
-	public String getUrl() {
+	public String getUrl(int connectionCount) {
 		String url = client.getUrl();
 		if (client.getSerializer() != null && client.getSerializer().getMode() == SerialMode.DE_RPC) {
 			url += (url.contains("?") ? "&" : "?") + MODULE_BASE_PARAMETER + '=' + GWT.getModuleBaseURL() + '&' + STRONG_NAME_PARAMETER + '=' + GWT.getPermutationStrongName();
 		}
-		return url + (url.contains("?") ? "&" : "?") + "t=" + Integer.toString((int) (Duration.currentTimeMillis() % Integer.MAX_VALUE), Character.MAX_RADIX).toUpperCase();
+		return url + (url.contains("?") ? "&" : "?") + "t=" + Integer.toString((int) (Duration.currentTimeMillis() % Integer.MAX_VALUE), Character.MAX_RADIX).toUpperCase() + "&c=" + connectionCount;
 	}
 }

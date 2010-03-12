@@ -82,11 +82,11 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	}
 	
 	@Override
-	public void connect() {
+	public void connect(int connectionCount) {
 		expectingDisconnection = false;
-		String url = getUrl();
+		String url = getUrl(connectionCount);
 		if (domain != null) {
-			url += "&domain=" + domain;
+			url += "&d=" + domain;
 		}
 		iframe.setSrc(url);
 	}

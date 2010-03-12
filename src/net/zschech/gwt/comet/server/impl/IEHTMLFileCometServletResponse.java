@@ -63,7 +63,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 		super.initiate();
 		
 		writer.append(HEAD);
-		String domain = getRequest().getParameter("domain");
+		String domain = getRequest().getParameter("d");
 		if (domain != null) {
 			writer.append("document.domain='");
 			writer.append(domain);

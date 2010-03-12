@@ -74,13 +74,13 @@ public class HTTPRequestCometTransport extends CometTransport {
 	private int read;
 	
 	@Override
-	public void connect() {
+	public void connect(int connectionCount) {
 		expectingDisconnection = false;
 		read = 0;
 		
 		xmlHttpRequest = XMLHttpRequest.create();
 		try {
-			xmlHttpRequest.open("GET", getUrl());
+			xmlHttpRequest.open("GET", getUrl(connectionCount));
 			xmlHttpRequest.setRequestHeader("Accept", "text/plain");
 			xmlHttpRequest.setOnReadyStateChange(new ReadyStateChangeHandler() {
 				@Override

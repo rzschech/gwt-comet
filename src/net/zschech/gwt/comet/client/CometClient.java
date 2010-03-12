@@ -58,6 +58,8 @@ public class CometClient {
 	
 	private static final Object REFRESH = new Object();
 	
+	private int connectionCount;
+	
 	private int connectionTimeout = 10000;
 	private int reconnectionTimout = 1000;
 	
@@ -230,7 +232,7 @@ public class CometClient {
 		
 		public void connect() {
 			connectionTimer.schedule(connectionTimeout);
-			transport.connect();
+			transport.connect(++connectionCount);
 		}
 		
 		public void disconnect() {
