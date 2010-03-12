@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.Serializable;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
 
 import net.zschech.gwt.comet.server.CometServlet;
 import net.zschech.gwt.comet.server.CometServletResponse;
@@ -29,9 +30,16 @@ public class EscapeTestServlet extends CometServlet {
 	
 	@Override
 	protected void doComet(CometServletResponse cometResponse) throws ServletException, IOException {
-		cometResponse.write(CometTestEntryPoint.ESCAPE);
-		cometResponse.write(new TestData(0, CometTestEntryPoint.ESCAPE));
-		cometResponse.write((Serializable)null);
+		HttpServletRequest request = cometResponse.getRequest();
+		String mode = request.getParameter("mode");
+		
+		if ("string".equals(mode)) {
+			cometResponse.write(CometTestEntryPoint.ESCAPE);
+		}
+		else {
+			cometResponse.write(new TestData(0, CometTestEntryPoint.ESCAPE));
+			cometResponse.write((Serializable) null);
+		}
 		cometResponse.terminate();
 	}
 }

@@ -34,8 +34,9 @@ public class ChatEntryPoint implements EntryPoint {
 	private ChatServiceAsync chatService;
 	private CometClient cometClient;
 	
-	private HTML messages;
 	private String username;
+	
+	private HTML messages;
 	private ScrollPanel scrollPanel;
 	
 	@SerialTypes( { ChatMessage.class, StatusUpdate.class })
@@ -44,7 +45,25 @@ public class ChatEntryPoint implements EntryPoint {
 	
 	@Override
 	public void onModuleLoad() {
-		messages = new HTML();
+		chatService = GWT.create(ChatService.class);
+		chatService.getUsername(new AsyncCallback<String>() {
+			@Override
+			public void onSuccess(String username) {
+				if (username == null) {
+					showLogonDialog();
+				}
+				else {
+					loggedOn(username);
+				}
+			}
+			
+			@Override
+			public void onFailure(Throwable caught) {
+				output(caught.toString(), "red");
+				// assume they are not logged in
+				showLogonDialog();
+			}
+		});
 		
 		FlowPanel controls = new FlowPanel();
 		final ListBox status = new ListBox();
@@ -78,6 +97,7 @@ public class ChatEntryPoint implements EntryPoint {
 		controls.add(logout);
 		
 		DockPanel dockPanel = new DockPanel();
+		messages = new HTML();
 		scrollPanel = new ScrollPanel();
 		scrollPanel.setHeight("250px");
 		scrollPanel.add(messages);
@@ -85,26 +105,6 @@ public class ChatEntryPoint implements EntryPoint {
 		dockPanel.add(controls, DockPanel.SOUTH);
 		
 		RootPanel.get().add(dockPanel);
-		
-		chatService = GWT.create(ChatService.class);
-		chatService.getUsername(new AsyncCallback<String>() {
-			@Override
-			public void onSuccess(String username) {
-				if (username == null) {
-					showLogonDialog();
-				}
-				else {
-					loggedOn(username);
-				}
-			}
-			
-			@Override
-			public void onFailure(Throwable caught) {
-				output(caught.toString(), "red");
-				// assume they are not logged in
-				showLogonDialog();
-			}
-		});
 	}
 	
 	private void showLogonDialog() {
