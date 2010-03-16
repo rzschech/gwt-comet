@@ -20,6 +20,7 @@ import java.io.InterruptedIOException;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * This AsyncServlet implementation blocks the HTTP request processing thread.
@@ -37,7 +38,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	}
 	
 	@Override
-	public Object suspend(CometServletResponseImpl response, CometSessionImpl session) throws IOException {
+	public Object suspend(CometServletResponseImpl response, CometSessionImpl session, HttpServletRequest request) throws IOException {
 		assert !Thread.holdsLock(response);
 		
 		if (session == null) {
@@ -47,7 +48,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 						long heartBeatTime = response.getHeartbeatScheduleTime();
 						if (heartBeatTime <= 0) {
 							response.heartbeat();
-							heartBeatTime = response.getHeartbeat();
+							heartBeatTime = response.getHeartbeatScheduleTime();
 						}
 						response.wait(heartBeatTime);
 					}

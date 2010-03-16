@@ -23,6 +23,7 @@ import java.util.concurrent.ScheduledFuture;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 public abstract class AsyncServlet {
@@ -50,8 +51,11 @@ public abstract class AsyncServlet {
 					// e.g. Apache Tomcat/6.0.18
 					server = "Catalina60";
 				}
-				else if (serverInfo.startsWith("GlassFish v3")) {
+				else if (serverInfo.startsWith("Grizzly/")) {
 					server = "Grizzly";
+				}
+				else if (serverInfo.startsWith("GlassFish ")) {
+					server = "GlassFish";
 				}
 				else if (serverInfo.startsWith("Google App Engine/")) {
 					server = "GAE";
@@ -129,11 +133,11 @@ public abstract class AsyncServlet {
 		return outputStream;
 	}
 	
-	public abstract Object suspend(CometServletResponseImpl response, CometSessionImpl session) throws IOException;
+	public abstract Object suspend(CometServletResponseImpl response, CometSessionImpl session, HttpServletRequest request) throws IOException;
 	
 	public abstract void terminate(CometServletResponseImpl response, CometSessionImpl session, boolean serverInitiated, Object suspendInfo);
 	
-	public abstract void invalidate(CometSessionImpl cometSessionImpl);
+	public abstract void invalidate(CometSessionImpl session);
 	
 	public abstract void enqueued(CometSessionImpl session);
 	

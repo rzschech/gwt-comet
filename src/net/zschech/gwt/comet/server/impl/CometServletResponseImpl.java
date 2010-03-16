@@ -228,6 +228,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	public void suspend() {
 		try {
 			CometSessionImpl s;
+			HttpServletRequest r;
 			synchronized (this) {
 				if (terminated) {
 					return;
@@ -254,15 +255,16 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 				// Don't hold onto the request while suspended as it takes up memory.
 				// Also Jetty and possibly other web servers reuse the HttpServletRequests so we can't assume they are still
 				// valid after they have been suspended
+				r = request;
 				request = null;
 				
 				if (!(async instanceof BlockingAsyncServlet)) {
-					suspendInfo = async.suspend(this, s);
+					suspendInfo = async.suspend(this, s, r);
 				}
 			}
 			
 			if (async instanceof BlockingAsyncServlet) {
-				async.suspend(this, s);
+				async.suspend(this, s, r);
 			}
 		}
 		catch (IOException e) {
