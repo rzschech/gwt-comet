@@ -153,7 +153,7 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	
 	@Override
 	protected boolean isOverTerminateLength(int written) {
-		return false;
+		return isOverRefreshLength(written * 2);
 	}
 	
 	@Override

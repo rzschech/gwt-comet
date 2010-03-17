@@ -153,7 +153,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	
 	@Override
 	protected boolean isOverTerminateLength(int written) {
-		return false;
+		return isOverRefreshLength(written * 2);
 	}
 	
 	private static CharSequence escapeString(CharSequence string) {
