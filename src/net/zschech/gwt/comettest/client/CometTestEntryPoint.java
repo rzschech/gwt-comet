@@ -32,6 +32,7 @@ import com.google.gwt.dom.client.Document;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.google.gwt.user.client.rpc.StatusCodeException;
 import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.FlowPanel;
 import com.google.gwt.user.client.ui.HTML;
@@ -209,7 +210,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		int refreshCount;
 		int messageCount;
 		int messagesCount;
-
+		
 		String failure;
 		boolean pass;
 		
@@ -221,7 +222,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		abstract void start();
 		
 		void start(String url) {
-			start(url, (CometSerializer)null);
+			start(url, (CometSerializer) null);
 		}
 		
 		void start(String url, SerialMode mode) {
@@ -285,7 +286,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			pass = false;
 			failure = null;
 		}
-
+		
 		private void doStart(String url, CometSerializer serializer) {
 			cometClient = new CometClient(url, serializer, this);
 			cometClient.start();
@@ -369,6 +370,15 @@ public class CometTestEntryPoint implements EntryPoint {
 			}
 		}
 		
+		void assertEquals(String message, Object expected, Object actual) {
+			if (!expected.equals(actual)) {
+				fail(message + " expected " + expected + " actual " + actual);
+			}
+			else {
+				pass = true;
+			}
+		}
+		
 		void pass() {
 			pass = true;
 		}
@@ -422,7 +432,9 @@ public class CometTestEntryPoint implements EntryPoint {
 			double errorTime = Duration.currentTimeMillis();
 			errorCount++;
 			output("error " + errorCount + " " + (errorTime - startTime) + "ms " + connected + " " + exception, "lime");
-			pass();
+			assertTrue("status code exception", exception instanceof StatusCodeException);
+			assertEquals("status code", 417, ((StatusCodeException) exception).getStatusCode());
+			assertEquals("status message", "Oh Noes!", ((StatusCodeException) exception).getMessage());
 			stop();
 		}
 	}
@@ -518,6 +530,21 @@ public class CometTestEntryPoint implements EntryPoint {
 		}
 		
 		@Override
+		public void onDisconnected() {
+			if (refresh) {
+				if (count * batch == messageCount) {
+					super.onDisconnected();
+				}
+				else {
+					output("ignoring disconnect " + messageCount, "silver");
+				}
+			}
+			else {
+				super.onDisconnected();
+			}
+		}
+		
+		@Override
 		void stop() {
 			assertTrue("count", count * batch == messageCount);
 			super.stop();
@@ -528,7 +555,7 @@ public class CometTestEntryPoint implements EntryPoint {
 	class ThroughputTest extends MessagingTest {
 		
 		ThroughputTest(boolean session, boolean refresh, SerialMode mode) {
-			super("throughput", session, refresh, mode, 10, 10, 0);
+			super("throughput", session, refresh, mode, 100, 10, 0);
 		}
 		
 		@Override
@@ -542,7 +569,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		private double latency;
 		
 		LatencyTest(boolean session, boolean refresh, SerialMode mode) {
-			super("latency", session, refresh, mode, 100, 1, 10);
+			super("latency", session, refresh, mode, 1000, 1, 10);
 		}
 		
 		void reset() {
@@ -579,7 +606,7 @@ public class CometTestEntryPoint implements EntryPoint {
 	class OrderTest extends MessagingTest {
 		
 		OrderTest(boolean session, boolean refresh, SerialMode mode) {
-			super("order", session, refresh, mode, 100, 1, 0);
+			super("order", session, refresh, mode, 1000, 1, 0);
 		}
 		
 		@Override
