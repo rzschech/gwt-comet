@@ -43,6 +43,7 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
 public class OperaEventSourceCometTransport extends CometTransport {
 	
 	private Element eventSource;
+	private boolean connected;
 	
 	@Override
 	public void initiate(CometClient client, CometListener listener) {
@@ -58,7 +59,10 @@ public class OperaEventSourceCometTransport extends CometTransport {
 	@Override
 	public void disconnect() {
 		DOM.setElementAttribute(eventSource, "src", "");
-		listener.onDisconnected();
+		if (connected) {
+			connected = false;
+			listener.onDisconnected();
+		}
 	}
 	
 	private static native Element createEventSource(OperaEventSourceCometTransport client) /*-{
@@ -109,6 +113,7 @@ public class OperaEventSourceCometTransport extends CometTransport {
 	@SuppressWarnings("unused")
 	private void onConnection(String message) {
 		if (message.startsWith("c")) {
+			connected = true;
 			String hertbeatParameter = message.substring(1);
 			try {
 				listener.onConnected(Integer.parseInt(hertbeatParameter));
@@ -129,7 +134,7 @@ public class OperaEventSourceCometTransport extends CometTransport {
 					statusMessage = null;
 				}
 				else {
-					statusCode = Integer.parseInt(status.substring(0, index - 1));
+					statusCode = Integer.parseInt(status.substring(0, index));
 					statusMessage = HTTPRequestCometTransport.unescape(status.substring(index + 1));
 				}
 				listener.onError(new StatusCodeException(statusCode, statusMessage), false);
@@ -139,6 +144,7 @@ public class OperaEventSourceCometTransport extends CometTransport {
 			}
 		}
 		else if (message.equals("d")) {
+			connected = false;
 			disconnect();
 			listener.onDisconnected();
 		}

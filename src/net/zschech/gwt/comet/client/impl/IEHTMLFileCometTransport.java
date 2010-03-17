@@ -65,6 +65,7 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	private String domain;
 	private IFrameElement iframe;
 	private BodyElement body;
+	private boolean connected;
 	private boolean expectingDisconnection;
 	
 	@Override
@@ -96,7 +97,9 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		// TODO this does not seem to close the connection immediately.
 		expectingDisconnection = true;
 		iframe.setSrc("");
-		onDisconnected();
+		if (connected) {
+			onDisconnected();
+		}
 	}
 	
 	private static native IFrameElement createIFrame(IEHTMLFileCometTransport client, String html) /*-{
@@ -203,12 +206,14 @@ public class IEHTMLFileCometTransport extends CometTransport {
 	
 	@SuppressWarnings("unused")
 	private void onConnected(int heartbeat) {
+		connected = true;
 		body = iframe.getContentDocument().getBody();
 		collect();
 		listener.onConnected(heartbeat);
 	}
 	
 	private void onDisconnected() {
+		connected = false;
 		body = null;
 		if (expectingDisconnection) {
 			listener.onDisconnected();
