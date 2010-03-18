@@ -70,11 +70,13 @@ public class HTTPRequestCometTransport extends CometTransport {
 	
 	private static final String SEPARATOR = "\n";
 	private XMLHttpRequest xmlHttpRequest;
+	private boolean aborted;
 	private boolean expectingDisconnection;
 	private int read;
 	
 	@Override
 	public void connect(int connectionCount) {
+		aborted = false;
 		expectingDisconnection = false;
 		read = 0;
 		
@@ -85,13 +87,15 @@ public class HTTPRequestCometTransport extends CometTransport {
 			xmlHttpRequest.setOnReadyStateChange(new ReadyStateChangeHandler() {
 				@Override
 				public void onReadyStateChange(XMLHttpRequest request) {
-					switch (request.getReadyState()) {
-					case XMLHttpRequest.LOADING:
-						onReceiving(request.getStatus(), request.getResponseText());
-						break;
-					case XMLHttpRequest.DONE:
-						onLoaded(request.getStatus(), request.getResponseText());
-						break;
+					if (!aborted) {
+						switch (request.getReadyState()) {
+						case XMLHttpRequest.LOADING:
+							onReceiving(request.getStatus(), request.getResponseText());
+							break;
+						case XMLHttpRequest.DONE:
+							onLoaded(request.getStatus(), request.getResponseText());
+							break;
+						}
 					}
 				}
 			});
@@ -105,6 +109,7 @@ public class HTTPRequestCometTransport extends CometTransport {
 	
 	@Override
 	public void disconnect() {
+		aborted = true;
 		expectingDisconnection = true;
 		if (xmlHttpRequest != null) {
 			xmlHttpRequest.clearOnReadyStateChange();
@@ -137,6 +142,9 @@ public class HTTPRequestCometTransport extends CometTransport {
 				JsArrayString data = CometClient.split(responseText.substring(read, index), SEPARATOR);
 				int length = data.length();
 				for (int i = 0; i < length; i++) {
+					if (aborted) {
+						return;
+					}
 					parse(data.get(i), messages);
 				}
 				read = index + 1;

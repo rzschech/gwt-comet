@@ -23,11 +23,14 @@ import javax.servlet.http.HttpServletRequest;
 
 import net.zschech.gwt.comet.server.CometServlet;
 import net.zschech.gwt.comet.server.CometServletResponse;
+import net.zschech.gwt.comet.server.CometSession;
 
 public class ConnectionTestServlet extends CometServlet {
 	
 	@Override
 	protected void doComet(final CometServletResponse cometResponse) throws ServletException, IOException {
+		final CometSession cometSession = cometResponse.getSession(false);
+		
 		HttpServletRequest request = cometResponse.getRequest();
 		final int delay = Integer.parseInt(request.getParameter("delay"));
 		new Thread() {
@@ -42,9 +45,14 @@ public class ConnectionTestServlet extends CometServlet {
 						throw new InterruptedIOException();
 					}
 					
-					if (!cometResponse.isTerminated()) {
-						log("Sending terminate");
-						cometResponse.terminate();
+					if (cometSession != null) {
+						cometSession.invalidate();
+					}
+					else {
+						if (!cometResponse.isTerminated()) {
+							log("Sending terminate");
+							cometResponse.terminate();
+						}
 					}
 				}
 				catch (IOException e) {
@@ -55,7 +63,7 @@ public class ConnectionTestServlet extends CometServlet {
 	}
 	
 	@Override
-	public void cometTerminated(CometServletResponse cometResponse, boolean serverInitiated){
+	public void cometTerminated(CometServletResponse cometResponse, boolean serverInitiated) {
 		log("Comet terminated by " + (serverInitiated ? "server" : "client"));
 		synchronized (cometResponse) {
 			cometResponse.notifyAll();

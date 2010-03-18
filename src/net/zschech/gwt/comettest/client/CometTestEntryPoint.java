@@ -69,20 +69,15 @@ public class CometTestEntryPoint implements EntryPoint {
 		
 		RootPanel.get().add(scrollPanel);
 
-		tests = new CometTest[][]{{
+		tests = new CometTest[][] {{
 			new ConnectionTest(true),
 			new ConnectionTest(false),
 		}, {
-			new ErrorTest(true),
-			new ErrorTest(false),
+			new ErrorTest(),
 		}, {
-			new EscapeTest(true, null),
-			new EscapeTest(true, SerialMode.RPC),
-			new EscapeTest(true, SerialMode.DE_RPC),
-		}, {
-			new EscapeTest(false, null),
-			new EscapeTest(false, SerialMode.RPC),
-			new EscapeTest(false, SerialMode.DE_RPC),
+			new EscapeTest(null),
+			new EscapeTest(SerialMode.RPC),
+			new EscapeTest(SerialMode.DE_RPC),
 		}, {
 			new ThroughputTest(true, true, null),
 			new ThroughputTest(true, true, SerialMode.RPC),
@@ -119,6 +114,8 @@ public class CometTestEntryPoint implements EntryPoint {
 			new OrderTest(false, false, null),
 			new OrderTest(false, false, SerialMode.RPC),
 			new OrderTest(false, false, SerialMode.DE_RPC),
+		}, {
+			new PaddingTest()
 		}};
 		
 		FlowPanel controls = new FlowPanel();
@@ -138,7 +135,7 @@ public class CometTestEntryPoint implements EntryPoint {
 				messages.setHTML("");
 			}
 		}));
-		controls.add(new Button("All", new ClickHandler() {
+		controls.add(new Button("all", new ClickHandler() {
 			@Override
 			public void onClick(ClickEvent e) {
 				runAll();
@@ -282,6 +279,8 @@ public class CometTestEntryPoint implements EntryPoint {
 						cometTestService.createSession(new AsyncCallback<Boolean>() {
 							@Override
 							public void onSuccess(Boolean result) {
+								startTime = Duration.currentTimeMillis();
+								output("start " + name, "black");
 								doStart(url, serializer);
 							}
 							
@@ -292,6 +291,8 @@ public class CometTestEntryPoint implements EntryPoint {
 						});
 					}
 					else {
+						startTime = Duration.currentTimeMillis();
+						output("start " + name, "black");
 						doStart(url, serializer);
 					}
 				}
@@ -320,19 +321,13 @@ public class CometTestEntryPoint implements EntryPoint {
 			failure = null;
 		}
 		
-		private void doStart(String url, CometSerializer serializer) {
+		void doStart(String url, CometSerializer serializer) {
 			cometClient = new CometClient(url, serializer, this);
 			cometClient.start();
-			
-			startTime = Duration.currentTimeMillis();
-			output("start " + name, "black");
 		}
 		
 		void stop() {
-			if (cometClient != null) {
-				cometClient.stop();
-				cometClient = null;
-			}
+			doStop();
 			cometTest = null;
 			stopTime = Duration.currentTimeMillis();
 			output("stop " + name + " " + (stopTime - startTime) + "ms", "black");
@@ -343,6 +338,13 @@ public class CometTestEntryPoint implements EntryPoint {
 				output("fail  :\n" + (failure == null ? "unknown" : failure), "red");
 			}
 			runNext();
+		}
+
+		protected void doStop() {
+			if (cometClient != null) {
+				cometClient.stop();
+				cometClient = null;
+			}
 		}
 		
 		void outputStats() {
@@ -453,8 +455,8 @@ public class CometTestEntryPoint implements EntryPoint {
 	
 	class ErrorTest extends CometTest {
 		
-		ErrorTest(boolean session) {
-			super("error", session);
+		ErrorTest() {
+			super("error", false);
 		}
 		
 		@Override
@@ -479,8 +481,8 @@ public class CometTestEntryPoint implements EntryPoint {
 		
 		private final SerialMode mode;
 		
-		EscapeTest(boolean session, SerialMode mode) {
-			super("escape mode=" + mode, session);
+		EscapeTest(SerialMode mode) {
+			super("escape mode=" + mode, false);
 			this.mode = mode;
 		}
 		
@@ -652,49 +654,60 @@ public class CometTestEntryPoint implements EntryPoint {
 		}
 	}
 	
-	// public void paddingTest() {
-	// paddingTest(0, 8 * 1024);
-	// }
+	class PaddingTest extends CometTest {
+		
+		int min;
+		int max;
+		int padding;
+		
+		PaddingTest() {
+			super("padding", false);
+		}
+
+		@Override
+		void start() {
+			doTest(0, 8 * 1024);
+		}
+		
+		private void doTest(int min, int max) {
+			System.out.println(min + " " + max);
+			if (min == max) {
+				output("padding required: " + min, "lime");
+				pass();
+				stop();
+			}
+			else {
+				this.min = min;
+				this.max = max;
+				this.padding = (min + max) / 2;
+				output("padding test: " + min + " " + max + " " + padding, "silver");
+				String url = GWT.getModuleBaseURL() + "connection?delay=60000&padding=" + padding;
+				
+				doStart(url, null);
+			}
+		}
+
+		@Override
+		public void onConnected(int heartbeat) {
+			output("connected", "silver");
+			doStop();
+			doTest(min, padding - 1);
+		}
+		
+		@Override
+		public void onDisconnected() {
+			output("disconnected", "silver");
+		}
+		
+		@Override
+		public void onError(Throwable exception, boolean connected) {
+			System.out.println("error " + exception);
+			output(exception.toString(), "silver");
+			doStop();
+			doTest(padding + 1, max);
+		}
+	}
 	
-	// public void paddingTest(final int min, final int max) {
-	// final int p = (min + max) / 2;
-	// output("Padding test: " + min + " " + max + " " + p);
-	// if (min == max) {
-	// return;
-	// }
-	// start(GWT.getModuleBaseURL() + "connection?delay=2000&padding=" + p, new CometListener() {
-	// @Override
-	// public void onMessage(List<? extends Serializable> messages) {
-	// }
-	//			
-	// @Override
-	// public void onConnected(int hearbeat) {
-	// stop();
-	// paddingTest(min, p - 1);
-	// }
-	//			
-	// @Override
-	// public void onDisconnected() {
-	// stop();
-	// }
-	//			
-	// @Override
-	// public void onHeartbeat() {
-	// }
-	//			
-	// @Override
-	// public void onRefresh() {
-	// }
-	//			
-	// @Override
-	// public void onError(Throwable exception, boolean connected) {
-	// stop();
-	// paddingTest(p + 1, max);
-	// }
-	// });
-	// }
-	//	
-	//	
 	private static String string(Throwable exception) {
 		String result = exception.toString();
 		exception = exception.getCause();
@@ -713,3 +726,9 @@ public class CometTestEntryPoint implements EntryPoint {
 		scrollPanel.scrollToBottom();
 	}
 }
+
+
+//
+//* Fix issue 1
+//* New test page
+//* 
