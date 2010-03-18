@@ -73,6 +73,15 @@ public class WebSocket extends JavaScriptObject {
 		});
 	}-*/;
 
+	public final native void setOnError(ErrorHandler handler) /*-{
+		// The 'this' context is always supposed to point to the websocket object in the
+		// onreadystatechange handler, but we reference it via closure to be extra sure.
+		var _this = this;
+		this.onerror = $entry(function() {
+			handler.@net.zschech.gwt.websockets.client.ErrorHandler::onError(Lnet/zschech/gwt/websockets/client/WebSocket;)(_this);
+		});
+	}-*/;
+	
 	public final native void setOnMessage(MessageHandler handler) /*-{
 		// The 'this' context is always supposed to point to the websocket object in the
 		// onreadystatechange handler, but we reference it via closure to be extra sure.
