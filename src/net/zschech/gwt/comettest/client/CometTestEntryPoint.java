@@ -46,6 +46,9 @@ public class CometTestEntryPoint implements EntryPoint {
 	
 	private HTML messages;
 	private ScrollPanel scrollPanel;
+	private CometTest[][] tests;
+	private int allX;
+	private int allY;
 	
 	@Override
 	public void onModuleLoad() {
@@ -126,12 +129,19 @@ public class CometTestEntryPoint implements EntryPoint {
 					cometTest.stop();
 					cometTest = null;
 				}
+				allX = -1;
 			}
 		}));
 		controls.add(new Button("clear", new ClickHandler() {
 			@Override
 			public void onClick(ClickEvent arg0) {
 				messages.setHTML("");
+			}
+		}));
+		controls.add(new Button("All", new ClickHandler() {
+			@Override
+			public void onClick(ClickEvent e) {
+				runAll();
 			}
 		}));
 		RootPanel.get().add(controls);
@@ -142,16 +152,39 @@ public class CometTestEntryPoint implements EntryPoint {
 				final CometTest test = t;
 				controls.add(new Button(test.name, new ClickHandler() {
 					@Override
-					public void onClick(ClickEvent arg0) {
+					public void onClick(ClickEvent e) {
 						if (cometTest != null) {
 							cometTest.stop();
 						}
+						allX = -1;
 						cometTest = test;
 						test.start();
 					}
 				}));
 			}
 			RootPanel.get().add(controls);
+		}
+	}
+	
+	private void runAll() {
+		allX = 0;
+		allY = 0;
+		tests[allX][allY].start();
+	}
+	
+	private void runNext() {
+		if (allX != -1) {
+			allY++;
+			if (allY >= tests[allX].length) {
+				allX++;
+				allY = 0;
+				if (allX >= tests.length) {
+					output("All done!", "lime");
+					allX = -1;
+					return;
+				}
+			}
+			tests[allX][allY].start();
 		}
 	}
 	
@@ -309,6 +342,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			else {
 				output("fail  :\n" + (failure == null ? "unknown" : failure), "red");
 			}
+			runNext();
 		}
 		
 		void outputStats() {
@@ -322,6 +356,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			connectedTime = Duration.currentTimeMillis();
 			connectedCount++;
 			output("connected " + connectedCount + " " + (connectedTime - startTime) + "ms heartbeat: " + heartbeat, "silver");
+			assertTrue("connected once", connectedCount == 1);
 		}
 		
 		@Override
@@ -329,6 +364,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			disconnectedTime = Duration.currentTimeMillis();
 			disconnectedCount++;
 			output("disconnected " + disconnectedCount + " " + (disconnectedTime - connectedTime) + "ms", "silver");
+			assertTrue("disconnected once", disconnectedCount == 1);
 			stop();
 		}
 		
@@ -398,7 +434,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		private final int connectionTime = 120 * 1000;
 		
 		ConnectionTest(boolean session) {
-			super("connection", session);
+			super("heartbeat and session keep alive", session);
 		}
 		
 		@Override
@@ -521,27 +557,12 @@ public class CometTestEntryPoint implements EntryPoint {
 				url += "&mode=string";
 			}
 			if (!refresh) {
-				url += "&length=" + (count * batch * 1000);
+				url += "&length=" + (count * batch * 10000);
 			}
 			
 			url += "&delay=" + delay;
 			
 			super.start(url, mode);
-		}
-		
-		@Override
-		public void onDisconnected() {
-			if (refresh) {
-				if (count * batch == messageCount) {
-					super.onDisconnected();
-				}
-				else {
-					output("ignoring disconnect " + messageCount, "silver");
-				}
-			}
-			else {
-				super.onDisconnected();
-			}
 		}
 		
 		@Override

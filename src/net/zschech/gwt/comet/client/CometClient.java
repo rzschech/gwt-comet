@@ -46,6 +46,10 @@ import com.google.gwt.user.client.Timer;
  */
 public class CometClient {
 	
+	private enum RefreshState {
+		CONNECTING, PRIMARY_DISCONNECTED, REFRESH_CONNECTED
+	}
+	
 	private final String url;
 	private final CometSerializer serializer;
 	private final CometListener listener;
@@ -53,10 +57,11 @@ public class CometClient {
 	private CometClientTransportWrapper refreshTransport;
 	
 	private boolean running;
-	private boolean refreshing;
+	private RefreshState refreshState;
 	private List<Object> refreshQueue;
 	
 	private static final Object REFRESH = new Object();
+	private static final Object DISCONNECT = new Object();
 	
 	private int connectionCount;
 	
@@ -126,6 +131,7 @@ public class CometClient {
 	}
 	
 	private void doDisconnect() {
+		refreshState = null;
 		primaryTransport.disconnect();
 		if (refreshTransport != null) {
 			refreshTransport.disconnect();
@@ -133,26 +139,43 @@ public class CometClient {
 	}
 	
 	private void doOnConnected(int heartbeat, CometClientTransportWrapper transport) {
-		listener.onConnected(heartbeat);
+		if (refreshState != null) {
+			if (transport == refreshTransport) {
+				if (refreshState == RefreshState.PRIMARY_DISCONNECTED) {
+					doneRefresh();
+				}
+				else if (refreshState == RefreshState.CONNECTING) {
+					refreshState = RefreshState.REFRESH_CONNECTED;
+				}
+				else {
+					assert false;
+				}
+			}
+			else {
+				assert false;
+			}
+		}
+		else {
+			listener.onConnected(heartbeat);
+		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	private void doOnDisconnected(CometClientTransportWrapper transport) {
-		if (transport == primaryTransport && refreshing) {
-			refreshing = false;
-			primaryTransport = refreshTransport;
-			refreshTransport = transport;
-			
-			if (refreshQueue != null) {
-				for (Object object : refreshQueue) {
-					if (object == REFRESH) {
-						doOnRefresh(primaryTransport);
-					}
-					else {
-						doOnMessage((List<? extends Serializable>) object, primaryTransport);
-					}
+		if (refreshState != null) {
+			if (transport == primaryTransport) {
+				if (refreshState == RefreshState.REFRESH_CONNECTED) {
+					doneRefresh();
 				}
-				refreshQueue.clear();
+				else if (refreshState == RefreshState.CONNECTING) {
+					refreshState = RefreshState.PRIMARY_DISCONNECTED;
+				}
+				else {
+					assert false;
+				}
+			}
+			else {
+				// the refresh transport has disconnected before the primary disconnected
+				refreshEnqueue(DISCONNECT);
 			}
 		}
 		else {
@@ -164,6 +187,29 @@ public class CometClient {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
+	private void doneRefresh() {
+		refreshState = null;
+		CometClientTransportWrapper temp = primaryTransport;
+		primaryTransport = refreshTransport;
+		refreshTransport = temp;
+		
+		if (refreshQueue != null) {
+			for (Object object : refreshQueue) {
+				if (object == REFRESH) {
+					doOnRefresh(primaryTransport);
+				}
+				else if (object == DISCONNECT) {
+					doOnDisconnected(primaryTransport);
+				}
+				else {
+					doOnMessage((List<? extends Serializable>) object, primaryTransport);
+				}
+			}
+			refreshQueue.clear();
+		}
+	}
+	
 	private void doOnHeartbeat(CometClientTransportWrapper transport) {
 		if (transport == primaryTransport) {
 			listener.onHeartbeat();
@@ -171,8 +217,8 @@ public class CometClient {
 	}
 	
 	private void doOnRefresh(CometClientTransportWrapper transport) {
-		if (transport == primaryTransport) {
-			refreshing = true;
+		if (refreshState == null && transport == primaryTransport) {
+			refreshState = RefreshState.CONNECTING;
 			
 			if (refreshTransport == null) {
 				refreshTransport = new CometClientTransportWrapper();
@@ -181,8 +227,11 @@ public class CometClient {
 			
 			listener.onRefresh();
 		}
-		else {
+		else if (transport == refreshTransport) {
 			refreshEnqueue(REFRESH);
+		}
+		else {
+			assert false;
 		}
 	}
 	
