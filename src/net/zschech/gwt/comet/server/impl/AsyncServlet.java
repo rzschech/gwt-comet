@@ -28,40 +28,39 @@ import javax.servlet.http.HttpSession;
 
 public abstract class AsyncServlet {
 	
-	public static final String SERVLET_CONTEXT_KEY = "net.zschech.gwt.comet.server.AsyncServlet";
+	public static final String SERVLET_CONTEXT_KEY = AsyncServlet.class.getName();
 	
 	public static AsyncServlet initialize(ServletContext context) {
 		synchronized (context) {
 			AsyncServlet async = (AsyncServlet) context.getAttribute(SERVLET_CONTEXT_KEY);
 			if (async == null) {
-				String server;
 				String serverInfo = context.getServerInfo();
-				if (serverInfo.startsWith("jetty-6") || serverInfo.startsWith("jetty/6")) {
-					// e.g. jetty-6.1.x
-					server = "Jetty6";
-				}
-				else if (serverInfo.startsWith("jetty/7")) {
-					server = "Jetty7";
-				}
-				else if (serverInfo.startsWith("Apache Tomcat/5.5.")) {
-					// e.g. Apache Tomcat/5.5.26
-					server = "Catalina55";
-				}
-				else if (serverInfo.startsWith("Apache Tomcat/6.")) {
-					// e.g. Apache Tomcat/6.0.18
-					server = "Catalina60";
-				}
-				else if (serverInfo.startsWith("Grizzly/")) {
-					server = "Grizzly";
-				}
-				else if (serverInfo.startsWith("GlassFish ")) {
-					server = "GlassFish";
-				}
-				else if (serverInfo.startsWith("Google App Engine/")) {
-					server = "GAE";
-				}
-				else {
-					server = null;
+				String server = context.getInitParameter(SERVLET_CONTEXT_KEY);
+				if (server == null) {
+					if (serverInfo.startsWith("jetty-6") || serverInfo.startsWith("jetty/6")) {
+						// e.g. jetty-6.1.x
+						server = "Jetty6";
+					}
+					else if (serverInfo.startsWith("jetty/7")) {
+						server = "Jetty7";
+					}
+					else if (serverInfo.startsWith("Apache Tomcat/5.5.")) {
+						// e.g. Apache Tomcat/5.5.26
+						server = "Catalina55";
+					}
+					else if (serverInfo.startsWith("Apache Tomcat/6.")) {
+						// e.g. Apache Tomcat/6.0.18
+						server = "Catalina60";
+					}
+					else if (serverInfo.startsWith("Grizzly/")) {
+						server = "Grizzly";
+					}
+					else if (serverInfo.startsWith("GlassFish ")) {
+						server = "GlassFish";
+					}
+					else if (serverInfo.startsWith("Google App Engine/")) {
+						server = "GAE";
+					}
 				}
 				
 				if (server != null) {
