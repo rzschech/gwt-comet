@@ -69,7 +69,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		
 		RootPanel.get().add(scrollPanel);
 
-		CometTest[][] tests = new CometTest[][]{{
+		tests = new CometTest[][]{{
 			new ConnectionTest(true),
 			new ConnectionTest(false),
 		}, {
