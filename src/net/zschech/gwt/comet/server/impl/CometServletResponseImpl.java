@@ -135,7 +135,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		
 		session = (CometSessionImpl) CometServlet.getCometSession(httpSession, create, create ? new ConcurrentLinkedQueue<Serializable>() : null);
 		if (create) {
-			session.setLastAccessedTime(System.currentTimeMillis());
+			session.setLastAccessedTime();
 			scheduleSessionKeepAlive();
 			session.setResponse(this);
 		}
@@ -211,7 +211,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		scheduleHeartbeat();
 		getSession(false);
 		if (session != null) {
-			session.setLastAccessedTime(System.currentTimeMillis());
+			session.setLastAccessedTime();
 			scheduleSessionKeepAlive();
 			
 			// This must be as the last step of initialise because after this

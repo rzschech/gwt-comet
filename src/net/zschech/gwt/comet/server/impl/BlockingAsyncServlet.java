@@ -70,7 +70,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 								long sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
 								if (sessionKeepAliveTime <= 0) {
 									if (access(session.getHttpSession())) {
-										session.setLastAccessedTime(System.currentTimeMillis());
+										session.setLastAccessedTime();
 										sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
 									}
 									else {

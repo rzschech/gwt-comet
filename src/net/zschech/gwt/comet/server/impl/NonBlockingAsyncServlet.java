@@ -1,3 +1,18 @@
+/*
+ * Copyright 2010 Richard Zschech.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package net.zschech.gwt.comet.server.impl;
 
 import java.util.concurrent.ScheduledExecutorService;
@@ -7,8 +22,14 @@ import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpSession;
 
+/**
+ * A non-blocking (does not block HTTP request threads) implementation for AsyncServlet.
+ * 
+ * Requires a scheduler for sending heart beats and keeping sessions alive.
+ * 
+ * @author Richard Zschech
+ */
 public abstract class NonBlockingAsyncServlet extends AsyncServlet {
 	
 	private ScheduledExecutorService scheduledExecutor;
@@ -53,24 +74,25 @@ public abstract class NonBlockingAsyncServlet extends AsyncServlet {
 	public ScheduledFuture<?> scheduleSessionKeepAlive(final CometServletResponseImpl response, final CometSessionImpl session) {
 		assert Thread.holdsLock(response);
 		try {
-			HttpSession httpSession = session.getHttpSession();
-			if (access(httpSession)) {
-				return null;
-			}
-			
 			long keepAliveTime = response.getSessionKeepAliveScheduleTime();
-			if (keepAliveTime <= 0) {
-				response.tryTerminate();
-				return null;
-			}
-			else if (keepAliveTime == Long.MAX_VALUE) {
+			if (keepAliveTime == Long.MAX_VALUE) {
 				return null;
 			}
 			else {
+				if (keepAliveTime <= 0) {
+					if (!access(session.getHttpSession())) {
+						response.tryTerminate();							
+						return null;
+					}
+				}
+				
 				return scheduledExecutor.schedule(new Runnable() {
 					@Override
 					public void run() {
-						session.setLastAccessedTime(System.currentTimeMillis());
+						if (!access(session.getHttpSession())) {
+							response.tryTerminate();							
+						}
+						session.setLastAccessedTime();
 						response.scheduleSessionKeepAlive();
 					}
 				}, keepAliveTime, TimeUnit.MILLISECONDS);

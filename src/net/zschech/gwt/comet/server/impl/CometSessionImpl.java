@@ -106,8 +106,8 @@ public class CometSessionImpl implements CometSession {
 		return response.get();
 	}
 	
-	void setLastAccessedTime(long lastAccessedTime) {
-		this.lastAccessedTime = lastAccessedTime;
+	void setLastAccessedTime() {
+		this.lastAccessedTime = System.currentTimeMillis();
 	}
 	
 	long getLastAccessedTime() {
