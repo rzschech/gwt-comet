@@ -78,7 +78,7 @@ public class CometSerializerGenerator extends Generator {
 					}
 						
 					JType resolvedType = typeOracle.getType(serializable.getCanonicalName());
-					while(rank>0) {
+					while (rank > 0) {
 						resolvedType = typeOracle.getArrayType(resolvedType);
 						rank--;
 					}
