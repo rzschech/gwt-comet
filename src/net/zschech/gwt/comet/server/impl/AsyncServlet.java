@@ -15,7 +15,6 @@
  */
 package net.zschech.gwt.comet.server.impl;
 
-import java.io.Flushable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
@@ -149,10 +148,6 @@ public abstract class AsyncServlet {
 	}
 	
 	public ScheduledFuture<?> scheduleSessionKeepAlive(CometServletResponseImpl response, CometSessionImpl session) {
-		return null;
-	}
-	
-	public Flushable getFlushable(CometServletResponseImpl response) throws IOException {
 		return null;
 	}
 	

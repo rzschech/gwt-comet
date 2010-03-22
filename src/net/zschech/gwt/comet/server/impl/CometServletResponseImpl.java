@@ -16,7 +16,6 @@
 package net.zschech.gwt.comet.server.impl;
 
 import java.io.ByteArrayOutputStream;
-import java.io.Flushable;
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.OutputStream;
@@ -58,7 +57,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	private final AsyncServlet async;
 	private final int heartbeat;
 	
-	private Flushable flushable;
 	private OutputStream asyncOutputStream;
 	protected Writer writer;
 	
@@ -194,8 +192,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	public synchronized void initiate() throws IOException {
 		response.setHeader("Cache-Control", "no-cache");
 		response.setCharacterEncoding("UTF-8");
-		
-		flushable = async.getFlushable(this);
 		
 		OutputStream outputStream = response.getOutputStream();
 		asyncOutputStream = outputStream = async.getOutputStream(outputStream);
@@ -362,9 +358,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	void flush() throws IOException {
 		assert Thread.holdsLock(this);
 		writer.flush();
-		if (flushable != null) {
-			flushable.flush();
-		}
 	}
 	
 	void setTerminated(boolean serverInitiated) {
