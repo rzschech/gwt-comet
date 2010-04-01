@@ -162,19 +162,20 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 		public void registerAsyncWrite() {
 			assert Thread.holdsLock(response);
 			// Unfortunately Grizzly does not setup it CometContext with the CometHandler immediately so we have to schedule it
-			// until it is active.
-			if (!active && !response.isTerminated() && activeFailureCount.get() < 10) {
+			// until it is active. See CometEngine.handle(AsyncProcessorTask) executeServlet() is called before cometContext.addActiveHandler(cometTask)
+			if (!active && !response.isTerminated() && activeFailureCount.get() < 100) {
 				cometEngine.getThreadPool().execute(new Runnable() {
 					@Override
 					public void run() {
 						try {
 							cometContext.registerAsyncWrite(CometHandlerImpl.this);
+							selector.wakeup();
 							if (activeFailureCount.getAndSet(0) != 0) {
 								log("Comet handler " + Integer.toHexString(hashCode()) + " active");
 							}
 						}
 						catch (IllegalStateException e) {
-							log("Comet handler " + Integer.toHexString(hashCode()) + " not active yet, retrying: " + e.getMessage());
+//							log("Comet handler " + Integer.toHexString(hashCode()) + " not active yet, retrying: " + e.getMessage());
 							activeFailureCount.incrementAndGet();
 							registerAsyncWrite();
 						}
@@ -184,6 +185,7 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 			else {
 				try {
 					cometContext.registerAsyncWrite(this);
+					selector.wakeup();
 					if (activeFailureCount.getAndSet(0) != 0) {
 						log("Comet handler " + Integer.toHexString(hashCode()) + " active");
 					}
@@ -194,11 +196,9 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 					}
 				}
 				catch (IllegalStateException e) {
-					log("Comet handler " + Integer.toHexString(hashCode()) + " not active yet, giving up: " + e.getMessage());
+//					log("Comet handler " + Integer.toHexString(hashCode()) + " not active yet, giving up: " + e.getMessage());
 				}
 			}
-			
-			selector.wakeup();
 		}
 		
 		public void onInitialize(CometEvent event) throws IOException {
