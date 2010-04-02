@@ -471,8 +471,10 @@ public class CometTestEntryPoint implements EntryPoint {
 			errorCount++;
 			output("error " + errorCount + " " + (errorTime - startTime) + "ms " + connected + " " + exception, "lime");
 			assertTrue("status code exception", exception instanceof StatusCodeException);
-			assertEquals("status code", 417, ((StatusCodeException) exception).getStatusCode());
-			assertEquals("status message", "Oh Noes!", ((StatusCodeException) exception).getMessage());
+			if (exception instanceof StatusCodeException) {
+				assertEquals("status code", 417, ((StatusCodeException) exception).getStatusCode());
+				assertEquals("status message", "Oh Noes!", ((StatusCodeException) exception).getMessage());
+			}
 			stop();
 		}
 	}
