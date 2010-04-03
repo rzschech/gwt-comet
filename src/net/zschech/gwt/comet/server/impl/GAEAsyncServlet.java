@@ -29,7 +29,7 @@ public class GAEAsyncServlet extends BlockingAsyncServlet {
 			super.suspend(response, session, request);
 		}
 		catch (DeadlineExceededException e) {
-			response.terminate();
+			response.tryTerminate();
 		}
 		return null;
 	}

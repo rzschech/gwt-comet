@@ -47,7 +47,13 @@ public class BlockingAsyncServlet extends AsyncServlet {
 					while (!response.isTerminated()) {
 						long heartBeatTime = response.getHeartbeatScheduleTime();
 						if (heartBeatTime <= 0) {
-							response.heartbeat();
+							try {
+								response.heartbeat();
+							}
+							catch (IOException e) {
+								log("Error sending heartbeat", e);
+								return null;
+							}
 							heartBeatTime = response.getHeartbeatScheduleTime();
 						}
 						response.wait(heartBeatTime);
@@ -55,7 +61,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 				}
 			}
 			catch (InterruptedException e) {
-				response.terminate();
+				response.tryTerminate();
 				throw new InterruptedIOException(e.getMessage());
 			}
 		}
@@ -74,14 +80,20 @@ public class BlockingAsyncServlet extends AsyncServlet {
 										sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
 									}
 									else {
-										response.terminate();
+										response.tryTerminate();
 										break;
 									}
 								}
 								
 								long heartBeatTime = response.getHeartbeatScheduleTime();
 								if (heartBeatTime <= 0) {
-									response.heartbeat();
+									try {
+										response.heartbeat();
+									}
+									catch (IOException e) {
+										log("Error sending heartbeat", e);
+										break;
+									}
 									heartBeatTime = response.getHeartbeat();
 								}
 								response.wait(Math.min(sessionKeepAliveTime, heartBeatTime));
@@ -91,7 +103,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 					}
 				}
 				catch (InterruptedException e) {
-					response.terminate();
+					response.tryTerminate();
 					throw new InterruptedIOException(e.getMessage());
 				}
 			}
@@ -100,7 +112,7 @@ public class BlockingAsyncServlet extends AsyncServlet {
 			}
 			
 			if (!session.isValid() && !response.isTerminated()) {
-				response.terminate();
+				response.tryTerminate();
 			}
 		}
 		return null;
