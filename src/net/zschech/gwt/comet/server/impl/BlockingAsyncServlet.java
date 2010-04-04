@@ -61,8 +61,8 @@ public class BlockingAsyncServlet extends AsyncServlet {
 				}
 			}
 			catch (InterruptedException e) {
+				log("Interrupted waiting for messages", e);
 				response.tryTerminate();
-				throw new InterruptedIOException(e.getMessage());
 			}
 		}
 		else {
@@ -103,8 +103,8 @@ public class BlockingAsyncServlet extends AsyncServlet {
 					}
 				}
 				catch (InterruptedException e) {
+					log("Interrupted waiting for messages", e);
 					response.tryTerminate();
-					throw new InterruptedIOException(e.getMessage());
 				}
 			}
 			catch (IOException e) {
