@@ -83,7 +83,7 @@ public class HTTPRequestCometTransport extends CometTransport {
 		xmlHttpRequest = XMLHttpRequest.create();
 		try {
 			xmlHttpRequest.open("GET", getUrl(connectionCount));
-			xmlHttpRequest.setRequestHeader("Accept", "text/plain");
+			xmlHttpRequest.setRequestHeader("Accept", "application/comet");
 			xmlHttpRequest.setOnReadyStateChange(new ReadyStateChangeHandler() {
 				@Override
 				public void onReadyStateChange(XMLHttpRequest request) {

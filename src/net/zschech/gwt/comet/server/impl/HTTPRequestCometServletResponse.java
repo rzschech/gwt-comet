@@ -58,7 +58,7 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	
 	@Override
 	public void initiate() throws IOException {
-		getResponse().setContentType("text/plain");
+		getResponse().setContentType("application/comet");
 
 		String origin = getRequest().getHeader("Origin");
 		if (origin != null) {
@@ -73,17 +73,7 @@ public class HTTPRequestCometServletResponse extends ManagedStreamCometServletRe
 	
 	@Override
 	protected int getPaddingRequired() {
-		if (chrome) {
-			if (getRequest().getScheme().equals("https")) {
-				return 64;
-			}
-			else {
-				return 42;
-			}
-		}
-		else {
-			return 0;
-		}
+		return 0;
 	}
 	
 	@Override

@@ -112,7 +112,7 @@ public class CometServlet extends HttpServlet {
 		
 		String accept = request.getHeader("Accept");
 		String userAgent = request.getHeader("User-Agent");
-		if ("text/plain".equals(accept)) {
+		if ("application/comet".equals(accept)) {
 			return new HTTPRequestCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
 		}
 		else if (userAgent != null && userAgent.contains("Opera")) {
