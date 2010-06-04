@@ -370,7 +370,7 @@ public class CometClient {
 				@Override
 				public void run() {
 					if (running) {
-						doDisconnect();
+						doConnect();
 					}
 				}
 			};

@@ -73,6 +73,9 @@ public class CometTestEntryPoint implements EntryPoint {
 			new ConnectionTest(true),
 			new ConnectionTest(false),
 		}, {
+			new ReconnectionTest(true),
+			new ReconnectionTest(false),
+		}, {
 			new ErrorTest(),
 		}, {
 			new EscapeTest(null),
@@ -450,6 +453,43 @@ public class CometTestEntryPoint implements EntryPoint {
 			assertTrue("connection time", disconnectedTime - connectedTime >= connectionTime - 100);
 			super.stop();
 			outputStats();
+		}
+	}
+	
+	class ReconnectionTest extends CometTest {
+		
+		private final int connectionTime = 120 * 1000;
+		
+		ReconnectionTest(boolean session) {
+			super("reconnection", session);
+		}
+		
+		@Override
+		void start() {
+			String url = GWT.getModuleBaseURL() + "connection?delay=" + connectionTime;
+			super.start(url);
+		}
+		
+		@Override
+		public void onConnected(int heartbeat) {
+			connectedTime = Duration.currentTimeMillis();
+			connectedCount++;
+			if (connectedCount > 1) {
+				pass();
+				stop();
+			}
+			else {
+				output("connected " + connectedCount + " " + (connectedTime - startTime) + "ms heartbeat: " + heartbeat, "silver");
+				output("stop your server now!", "blue");
+			}
+		}
+		
+		@Override
+		public void onError(Throwable exception, boolean connected) {
+			double errorTime = Duration.currentTimeMillis();
+			errorCount++;
+			output("error " + errorCount + " " + (errorTime - startTime) + "ms " + connected + " " + exception, "silver");
+			output("start your server now!", "blue");
 		}
 	}
 	
