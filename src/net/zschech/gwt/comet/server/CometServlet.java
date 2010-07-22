@@ -55,11 +55,15 @@ import com.google.gwt.user.server.rpc.SerializationPolicy;
  */
 public class CometServlet extends HttpServlet {
 	
+	public static final String AUTO_CREATE_COMET_SESSION = "net.zschech.gwt.comet.server.auto.create.comet.session.on.comet.request";
+
 	private static final long serialVersionUID = 820972291784919880L;
 	
 	private int heartbeat = 15 * 1000; // 15 seconds by default
 	
 	private transient AsyncServlet async;
+
+	private boolean autoCreateCometSession;
 	
 	public void setHeartbeat(int heartbeat) {
 		this.heartbeat = heartbeat;
@@ -76,13 +80,14 @@ public class CometServlet extends HttpServlet {
 		if (heartbeat != null) {
 			this.heartbeat = Integer.parseInt(heartbeat);
 		}
+		this.autoCreateCometSession = "true".equals(getServletConfig().getInitParameter(AUTO_CREATE_COMET_SESSION));
 		async = AsyncServlet.initialize(getServletContext());
 	}
 	
 	@Override
 	protected void doGet(final HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		try {
-			int requestHeartbeat = heartbeat;
+			int requestHeartbeat = getHeartbeat();
 			String requestedHeartbeat = request.getParameter("heartbeat");
 			if (requestedHeartbeat != null) {
 				try {
@@ -90,7 +95,6 @@ public class CometServlet extends HttpServlet {
 					if (requestHeartbeat <= 0) {
 						throw new IOException("invalid heartbeat parameter");
 					}
-					requestHeartbeat = getHeartbeat();
 				}
 				catch (NumberFormatException e) {
 					throw new IOException("invalid heartbeat parameter");
@@ -127,6 +131,10 @@ public class CometServlet extends HttpServlet {
 		try {
 			// setup the request
 			response.initiate();
+			
+			if (autoCreateCometSession) {
+				response.getSession();
+			}
 			
 			// call the application code
 			doComet(response);

@@ -31,7 +31,7 @@ import javax.servlet.http.HttpSessionListener;
  *   <listener-class>net.zschech.gwt.comet.server.CometHttpSessionListener</listener-class>
  * </listener>
  * <context-param>
- *   <param-name>net.zschech.gwt.comet.server.auto.create.comet.session</param-name>
+ *   <param-name>net.zschech.gwt.comet.server.auto.create.comet.session.with.http.session</param-name>
  *   <param-value>true</param-value>
  * </context-param>
  * </pre>
@@ -40,7 +40,7 @@ import javax.servlet.http.HttpSessionListener;
  */
 public class CometHttpSessionListener implements HttpSessionListener {
 	
-	public static final String AUTO_CREATE_COMET_SESSION = "net.zschech.gwt.comet.server.auto.create.comet.session";
+	public static final String AUTO_CREATE_COMET_SESSION = "net.zschech.gwt.comet.server.auto.create.comet.session.with.http.session";
 	
 	@Override
 	public void sessionCreated(HttpSessionEvent e) {
