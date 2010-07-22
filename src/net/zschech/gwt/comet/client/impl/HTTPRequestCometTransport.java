@@ -25,8 +25,14 @@ import net.zschech.gwt.comet.client.CometSerializer;
 
 import com.google.gwt.core.client.JavaScriptException;
 import com.google.gwt.core.client.JsArrayString;
+import com.google.gwt.dom.client.NativeEvent;
+import com.google.gwt.event.dom.client.KeyCodes;
+import com.google.gwt.event.dom.client.KeyDownEvent;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
+import com.google.gwt.user.client.Event;
+import com.google.gwt.user.client.Event.NativePreviewEvent;
+import com.google.gwt.user.client.Event.NativePreviewHandler;
 import com.google.gwt.user.client.rpc.SerializationException;
 import com.google.gwt.user.client.rpc.StatusCodeException;
 import com.google.gwt.xhr.client.ReadyStateChangeHandler;
@@ -67,6 +73,20 @@ import com.google.gwt.xhr.client.XMLHttpRequest;
  * @author Richard Zschech
  */
 public class HTTPRequestCometTransport extends CometTransport {
+	
+	static {
+		Event.addNativePreviewHandler(new NativePreviewHandler() {
+			@Override
+			public void onPreviewNativeEvent(NativePreviewEvent e) {
+				if (e.getTypeInt() == Event.getTypeInt(KeyDownEvent.getType().getName())) {
+					NativeEvent nativeEvent = e.getNativeEvent();
+					if (nativeEvent.getKeyCode() == KeyCodes.KEY_ESCAPE) {
+						nativeEvent.preventDefault();
+					}
+				}
+			}
+		});
+	}
 	
 	private static final String SEPARATOR = "\n";
 	private XMLHttpRequest xmlHttpRequest;
