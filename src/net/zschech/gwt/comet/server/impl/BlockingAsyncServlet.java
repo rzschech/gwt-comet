@@ -71,6 +71,8 @@ public class BlockingAsyncServlet extends AsyncServlet {
 			try {
 				try {
 					synchronized (response) {
+						response.setProcessing(true);
+						
 						while (session.isValid() && !response.isTerminated()) {
 							while (response.checkSessionQueue(true)) {
 								long sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
@@ -96,6 +98,8 @@ public class BlockingAsyncServlet extends AsyncServlet {
 									}
 									heartBeatTime = response.getHeartbeat();
 								}
+								
+								response.setProcessing(false);
 								response.wait(Math.min(sessionKeepAliveTime, heartBeatTime));
 							}
 							response.writeSessionQueue(true);
@@ -138,8 +142,10 @@ public class BlockingAsyncServlet extends AsyncServlet {
 	public void enqueued(CometSessionImpl session) {
 		CometServletResponseImpl response = session.getResponse();
 		if (response != null) {
-			synchronized (response) {
-				response.notifyAll();
+			if (response.setProcessing(true)) {
+				synchronized (response) {
+					response.notifyAll();
+				}
 			}
 		}
 	}

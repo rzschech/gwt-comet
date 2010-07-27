@@ -19,6 +19,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.servlet.ServletContext;
@@ -120,12 +121,14 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 	public void enqueued(CometSessionImpl session) {
 		CometServletResponseImpl response = session.getResponse();
 		if (response != null) {
-			synchronized (response) {
-				if (!response.isTerminated()) {
-					Object suspendInfo = response.getSuspendInfo();
-					if (suspendInfo != null) {
-						CometHandlerImpl handler = (CometHandlerImpl) suspendInfo;
-						handler.registerAsyncWrite();
+			if (response.setProcessing(true)) {
+				synchronized (response) {
+					if (!response.isTerminated()) {
+						Object suspendInfo = response.getSuspendInfo();
+						if (suspendInfo != null) {
+							CometHandlerImpl handler = (CometHandlerImpl) suspendInfo;
+							handler.registerAsyncWrite();
+						}
 					}
 				}
 			}
@@ -150,12 +153,14 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 		private volatile boolean active;
 		private volatile ByteBuffer buffer;
 		private volatile AtomicInteger activeFailureCount = new AtomicInteger();
+		private AtomicBoolean registered = new AtomicBoolean();
 		
 		public CometHandlerImpl(CometServletResponseImpl response) {
 			this.response = response;
 			this.chunked = response.getResponse().containsHeader("Transfer-Encoding");
 		}
 		
+		@Override
 		public void attach(Object attachment) {
 		}
 		
@@ -183,24 +188,27 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 				});
 			}
 			else {
-				try {
-					cometContext.registerAsyncWrite(this);
-					selector.wakeup();
-					if (activeFailureCount.getAndSet(0) != 0) {
-						log("Comet handler " + Integer.toHexString(hashCode()) + " active");
+				if (registered.compareAndSet(false, true)) {
+					try {
+						cometContext.registerAsyncWrite(this);
+						selector.wakeup();
+						if (activeFailureCount.getAndSet(0) != 0) {
+							log("Comet handler " + Integer.toHexString(hashCode()) + " active");
+						}
 					}
-				}
-				catch (CancelledKeyException e) {
-					if (!response.isTerminated()) {
-						response.setTerminated(true);
+					catch (CancelledKeyException e) {
+						if (!response.isTerminated()) {
+							response.setTerminated(true);
+						}
 					}
-				}
-				catch (IllegalStateException e) {
-//					log("Comet handler " + Integer.toHexString(hashCode()) + " not active yet, giving up: " + e.getMessage());
+					catch (IllegalStateException e) {
+	//					log("Comet handler " + Integer.toHexString(hashCode()) + " not active yet, giving up: " + e.getMessage());
+					}
 				}
 			}
 		}
 		
+		@Override
 		public void onInitialize(CometEvent event) throws IOException {
 			synchronized (response) {
 				if (response.checkSessionQueue(false)) {
@@ -209,15 +217,17 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 			}
 		}
 		
+		@Override
 		public void onInterrupt(CometEvent event) throws IOException {
 			terminate();
 		}
 		
+		@Override
 		public void onTerminate(CometEvent event) throws IOException {
 			terminate();
 		}
 		
-		private void terminate() throws IOException {
+		private void terminate() {
 			synchronized (response) {
 				if (!response.isTerminated()) {
 					response.setTerminated(false);
@@ -283,8 +293,14 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 						}
 					}
 					
-					if (buffer == null && response.isTerminated()) {
-						cometContext.resumeCometHandler(this);
+					if (buffer == null) {
+						if (response.isTerminated()) {
+							cometContext.resumeCometHandler(this);
+						}
+						else {
+							registered.set(false);
+							response.setProcessing(false);
+						}
 					}
 				}
 				catch (IllegalArgumentException e) {

@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -62,6 +63,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	
 	private boolean terminated;
 	private boolean suspended;
+	private AtomicBoolean processing = new AtomicBoolean();
 	
 	private Object suspendInfo;
 	private volatile long lastWriteTime;
@@ -196,10 +198,13 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		OutputStream outputStream = response.getOutputStream();
 		asyncOutputStream = outputStream = async.getOutputStream(outputStream);
 		
-		String acceptEncoding = request.getHeader("Accept-Encoding");
-		if (acceptEncoding != null && acceptEncoding.contains("deflate")) {
-			response.setHeader("Content-Encoding", "deflate");
-			outputStream = new DeflaterOutputStream(outputStream);
+		String offloadCompression = request.getHeader("x-offload-compression");
+		if (offloadCompression == null || !offloadCompression.equals("true")) {
+			String acceptEncoding = request.getHeader("Accept-Encoding");
+			if (acceptEncoding != null && acceptEncoding.contains("deflate")) {
+				response.setHeader("Content-Encoding", "deflate");
+				outputStream = new DeflaterOutputStream(outputStream);
+			}
 		}
 		
 		writer = new OutputStreamWriter(getOutputStream(outputStream), "UTF-8");
@@ -443,6 +448,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		return !terminated && session != null && session.isValid() && (empty ? session.getQueue().isEmpty() : !session.getQueue().isEmpty());
 	}
 	
+	/**
+	 * @param flush flush if the queue is empty
+	 * @throws IOException
+	 */
 	void writeSessionQueue(boolean flush) throws IOException {
 		assert Thread.holdsLock(this);
 		
@@ -467,5 +476,9 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 				write(messages, flush && queue.isEmpty());
 			}
 		}
+	}
+	
+	public boolean setProcessing(boolean processing) {
+		return this.processing.compareAndSet(!processing, processing);
 	}
 }
