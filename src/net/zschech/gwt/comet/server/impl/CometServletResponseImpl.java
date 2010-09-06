@@ -198,13 +198,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		OutputStream outputStream = response.getOutputStream();
 		asyncOutputStream = outputStream = async.getOutputStream(outputStream);
 		
-		String offloadCompression = request.getHeader("x-offload-compression");
-		if (offloadCompression == null || !offloadCompression.equals("true")) {
-			String acceptEncoding = request.getHeader("Accept-Encoding");
-			if (acceptEncoding != null && acceptEncoding.contains("deflate")) {
-				response.setHeader("Content-Encoding", "deflate");
-				outputStream = new DeflaterOutputStream(outputStream);
-			}
+		String acceptEncoding = request.getHeader("Accept-Encoding");
+		if (acceptEncoding != null && acceptEncoding.contains("deflate")) {
+			response.setHeader("Content-Encoding", "deflate");
+			outputStream = new DeflaterOutputStream(outputStream);
 		}
 		
 		writer = new OutputStreamWriter(getOutputStream(outputStream), "UTF-8");
