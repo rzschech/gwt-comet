@@ -16,6 +16,7 @@
 package net.zschech.gwt.comet.rebind;
 
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.util.List;
@@ -71,12 +72,12 @@ public class CometSerializerGenerator extends Generator {
 				for (Class<? extends Serializable> serializable : annotation.value()) {
 					int rank = 0;
 					if (serializable.isArray()) {
-						while(serializable.isArray()) {
+						while (serializable.isArray()) {
 							serializable = (Class<? extends Serializable>) serializable.getComponentType();
 							rank++;
 						}
 					}
-						
+					
 					JType resolvedType = typeOracle.getType(serializable.getCanonicalName());
 					while (rank > 0) {
 						resolvedType = typeOracle.getArrayType(resolvedType);
@@ -86,15 +87,24 @@ public class CometSerializerGenerator extends Generator {
 					typesSentToBrowserBuilder.addRootType(logger, resolvedType);
 				}
 				
-				// Create a resource file to receive all of the serialization information
-				// computed by STOB and mark it as private so it does not end up in the
-				// output.
 				OutputStream pathInfo = context.tryCreateResource(logger, typeName + ".rpc.log");
-				typesSentToBrowserBuilder.setLogOutputStream(pathInfo);
-				typesSentFromBrowserBuilder.setLogOutputStream(pathInfo);
+				PrintWriter writer = new PrintWriter(new OutputStreamWriter(pathInfo));
+				writer.write("====================================\n");
+				writer.write("Types potentially sent from browser:\n");
+				writer.write("====================================\n\n");
+				writer.flush();
 				
+				typesSentToBrowserBuilder.setLogOutputWriter(writer);
+			    SerializableTypeOracle typesSentFromBrowser = typesSentFromBrowserBuilder.build(logger);
+
+				writer.write("===================================\n");
+				writer.write("Types potentially sent from server:\n");
+				writer.write("===================================\n\n");
+				writer.flush();
+				typesSentFromBrowserBuilder.setLogOutputWriter(writer);
 				SerializableTypeOracle typesSentToBrowser = typesSentToBrowserBuilder.build(logger);
-				SerializableTypeOracle typesSentFromBrowser = typesSentFromBrowserBuilder.build(logger);
+				
+				writer.close();
 				
 				if (pathInfo != null) {
 					context.commitResource(logger, pathInfo).setPrivate(true);
