@@ -37,6 +37,7 @@ import net.zschech.gwt.comet.client.impl.CometTransport;
 import net.zschech.gwt.comet.server.impl.AsyncServlet;
 import net.zschech.gwt.comet.server.impl.CometServletResponseImpl;
 import net.zschech.gwt.comet.server.impl.CometSessionImpl;
+import net.zschech.gwt.comet.server.impl.EventSourceCometServletResponse;
 import net.zschech.gwt.comet.server.impl.HTTPRequestCometServletResponse;
 import net.zschech.gwt.comet.server.impl.IEHTMLFileCometServletResponse;
 import net.zschech.gwt.comet.server.impl.OperaEventSourceCometServletResponse;
@@ -56,13 +57,13 @@ import com.google.gwt.user.server.rpc.SerializationPolicy;
 public class CometServlet extends HttpServlet {
 	
 	public static final String AUTO_CREATE_COMET_SESSION = "net.zschech.gwt.comet.server.auto.create.comet.session.on.comet.request";
-
+	
 	private static final long serialVersionUID = 820972291784919880L;
 	
 	private int heartbeat = 15 * 1000; // 15 seconds by default
 	
 	private transient AsyncServlet async;
-
+	
 	private boolean autoCreateCometSession;
 	
 	public void setHeartbeat(int heartbeat) {
@@ -116,7 +117,10 @@ public class CometServlet extends HttpServlet {
 		
 		String accept = request.getHeader("Accept");
 		String userAgent = request.getHeader("User-Agent");
-		if ("application/comet".equals(accept)) {
+		if ("text/event-stream".equals(accept)) {
+			return new EventSourceCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
+		}
+		else if ("application/comet".equals(accept)) {
 			return new HTTPRequestCometServletResponse(request, response, serializationPolicy, clientOracle, this, async, requestHeartbeat);
 		}
 		else if (userAgent != null && userAgent.contains("Opera")) {

@@ -19,21 +19,17 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.zschech.gwt.comet.client.CometClient;
-import net.zschech.gwt.comet.client.CometException;
-import net.zschech.gwt.comet.client.CometSerializer;
-
 import com.google.gwt.core.client.JavaScriptException;
-import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.dom.client.NativeEvent;
 import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.KeyDownEvent;
 import com.google.gwt.http.client.RequestException;
 import com.google.gwt.http.client.Response;
+import com.google.gwt.regexp.shared.RegExp;
+import com.google.gwt.regexp.shared.SplitResult;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.Event.NativePreviewEvent;
 import com.google.gwt.user.client.Event.NativePreviewHandler;
-import com.google.gwt.user.client.rpc.SerializationException;
 import com.google.gwt.user.client.rpc.StatusCodeException;
 import com.google.gwt.xhr.client.ReadyStateChangeHandler;
 import com.google.gwt.xhr.client.XMLHttpRequest;
@@ -72,7 +68,10 @@ import com.google.gwt.xhr.client.XMLHttpRequest;
  * 
  * @author Richard Zschech
  */
-public class HTTPRequestCometTransport extends CometTransport {
+public class HTTPRequestCometTransport extends RawDataCometTransport {
+	
+	private static final String SEPARATOR = "\n";
+	private static RegExp separator;
 	
 	static {
 		Event.addNativePreviewHandler(new NativePreviewHandler() {
@@ -86,18 +85,15 @@ public class HTTPRequestCometTransport extends CometTransport {
 				}
 			}
 		});
+		separator = RegExp.compile(SEPARATOR);
 	}
 	
-	private static final String SEPARATOR = "\n";
 	private XMLHttpRequest xmlHttpRequest;
-	private boolean aborted;
-	private boolean expectingDisconnection;
 	private int read;
 	
 	@Override
 	public void connect(int connectionCount) {
-		aborted = false;
-		expectingDisconnection = false;
+		super.connect(connectionCount);
 		read = 0;
 		
 		xmlHttpRequest = XMLHttpRequest.create();
@@ -107,7 +103,7 @@ public class HTTPRequestCometTransport extends CometTransport {
 			xmlHttpRequest.setOnReadyStateChange(new ReadyStateChangeHandler() {
 				@Override
 				public void onReadyStateChange(XMLHttpRequest request) {
-					if (!aborted) {
+					if (!disconnecting) {
 						switch (request.getReadyState()) {
 						case XMLHttpRequest.LOADING:
 							onReceiving(request.getStatus(), request.getResponseText());
@@ -129,8 +125,7 @@ public class HTTPRequestCometTransport extends CometTransport {
 	
 	@Override
 	public void disconnect() {
-		aborted = true;
-		expectingDisconnection = true;
+		super.disconnect();
 		if (xmlHttpRequest != null) {
 			xmlHttpRequest.clearOnReadyStateChange();
 			xmlHttpRequest.abort();
@@ -151,7 +146,7 @@ public class HTTPRequestCometTransport extends CometTransport {
 	private void onReceiving(int statusCode, String responseText, boolean connected) {
 		if (statusCode != Response.SC_OK) {
 			if (!connected) {
-				expectingDisconnection = true;
+				super.disconnect();
 				listener.onError(new StatusCodeException(statusCode, responseText), connected);
 			}
 		}
@@ -159,13 +154,18 @@ public class HTTPRequestCometTransport extends CometTransport {
 			int index = responseText.lastIndexOf(SEPARATOR);
 			if (index > read) {
 				List<Serializable> messages = new ArrayList<Serializable>();
-				JsArrayString data = CometClient.split(responseText.substring(read, index), SEPARATOR);
+				
+				SplitResult data = separator.split(responseText.substring(read, index), index);
 				int length = data.length();
 				for (int i = 0; i < length; i++) {
-					if (aborted) {
+					if (disconnecting) {
 						return;
 					}
-					parse(data.get(i), messages);
+					
+					String message = data.get(i);
+					if (!message.isEmpty()) {
+						parse(message, messages);
+					}
 				}
 				read = index + 1;
 				if (!messages.isEmpty()) {
@@ -174,78 +174,8 @@ public class HTTPRequestCometTransport extends CometTransport {
 			}
 			
 			if (!connected) {
-				if (expectingDisconnection) {
-					listener.onDisconnected();
-				}
-				else {
-					listener.onError(new CometException("Unexpected disconnection"), false);
-				}
+				super.disconnected();
 			}
 		}
-	}
-	
-	private void parse(String message, List<Serializable> messages) {
-		if (expectingDisconnection) {
-			listener.onError(new CometException("Expecting disconnection but received message: " + message), true);
-		}
-		else if (message.isEmpty()) {
-			listener.onError(new CometException("Invalid empty message received"), true);
-		}
-		else {
-			char c = message.charAt(0);
-			switch (c) {
-			case '!':
-				String hertbeatParameter = message.substring(1);
-				try {
-					listener.onConnected(Integer.parseInt(hertbeatParameter));
-				}
-				catch (NumberFormatException e) {
-					listener.onError(new CometException("Unexpected heartbeat parameter: " + hertbeatParameter), true);
-				}
-				break;
-			case '?':
-				// clean disconnection
-				expectingDisconnection = true;
-				break;
-			case '#':
-				listener.onHeartbeat();
-				break;
-			case '@':
-				listener.onRefresh();
-				break;
-			case '*':
-				// ignore padding
-				break;
-			case '|':
-				messages.add(message.substring(1));
-				break;
-			case ']':
-				messages.add(unescape(message.substring(1)));
-				break;
-			case '[':
-			case 'R':
-			case 'r':
-			case 'f':
-				CometSerializer serializer = client.getSerializer();
-				if (serializer == null) {
-					listener.onError(new SerializationException("Can not deserialize message with no serializer: " + message), true);
-				}
-				else {
-					try {
-						messages.add(serializer.parse(message));
-					}
-					catch (SerializationException e) {
-						listener.onError(e, true);
-					}
-				}
-				break;
-			default:
-				listener.onError(new CometException("Invalid message received: " + message), true);
-			}
-		}
-	}
-	
-	static String unescape(String string) {
-		return string.replace("\\n", "\n").replace("\\\\", "\\");
 	}
 }

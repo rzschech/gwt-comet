@@ -168,7 +168,6 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		}
 	}
 	
-	@SuppressWarnings("unused")
 	private void onMessages(JsArrayString arguments) {
 		collect();
 		int length = arguments.length();
@@ -204,7 +203,6 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		listener.onMessage(messages);
 	}
 	
-	@SuppressWarnings("unused")
 	private void onConnected(int heartbeat) {
 		connected = true;
 		body = iframe.getContentDocument().getBody();
@@ -223,22 +221,18 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		}
 	}
 	
-	@SuppressWarnings("unused")
 	private void onError(int statusCode, String message) {
 		listener.onError(new StatusCodeException(statusCode, message), false);
 	}
 	
-	@SuppressWarnings("unused")
 	private void onHeartbeat() {
 		listener.onHeartbeat();
 	}
 	
-	@SuppressWarnings("unused")
 	private void onRefresh() {
 		listener.onRefresh();
 	}
 	
-	@SuppressWarnings("unused")
 	private void onTerminate() {
 		expectingDisconnection = true;
 	}

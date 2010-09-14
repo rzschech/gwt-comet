@@ -30,24 +30,15 @@ import com.google.gwt.user.server.rpc.SerializationPolicy;
 
 public abstract class ManagedStreamCometServletResponseImpl extends CometServletResponseImpl {
 	
+	protected final int paddingRequired;
+	protected final int length;
+	
 	private CountOutputStream countOutputStream;
 	private boolean refresh;
 	
-	protected Integer length;
-	
 	public ManagedStreamCometServletResponseImpl(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
 		super(request, response, serializationPolicy, clientOracle, servlet, async, heartbeat);
-	}
-	
-	@Override
-	protected OutputStream getOutputStream(OutputStream outputStream) {
-		countOutputStream = new CountOutputStream(outputStream);
-		return countOutputStream;
-	}
-	
-	@Override
-	protected void doSuspend() throws IOException {
-		int paddingRequired;
+		
 		String paddingParameter = getRequest().getParameter("padding");
 		if (paddingParameter != null) {
 			paddingRequired = Integer.parseInt(paddingParameter);
@@ -60,8 +51,19 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 		if (lengthParameter != null) {
 			length = Integer.parseInt(lengthParameter);
 		}
-		
-		if (paddingRequired > 0) {
+		else {
+			length = 0;
+		}
+	}
+	
+	protected OutputStream setupCountOutputStream(OutputStream outputStream) {
+		countOutputStream = new CountOutputStream(outputStream);
+		return countOutputStream;
+	}
+	
+	@Override
+	protected void doSuspend() throws IOException {
+		if (paddingRequired != 0 && countOutputStream != null) {
 			countOutputStream.setIgnoreFlush(true);
 			writer.flush();
 			
@@ -73,9 +75,11 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 			}
 			
 			if (paddingRequired > written) {
-				CharSequence padding = getPadding(paddingRequired - written);
-				if (padding != null) {
-					writer.append(padding);
+				CharSequence paddingData = getPadding(paddingRequired - written);
+				if (paddingData != null) {
+					appendMessageHeader();
+					writer.append(paddingData);
+					appendMessageTrailer();
 				}
 			}
 			
@@ -96,22 +100,30 @@ public abstract class ManagedStreamCometServletResponseImpl extends CometServlet
 	}
 	
 	private void checkLength() throws IOException {
-		int count = countOutputStream.getCount();
-		boolean hasSession = hasSession();
-		if (!hasSession) {
-			if (isOverTerminateLength(count)) {
-				terminate();
+		if (countOutputStream != null) {
+			int count = countOutputStream.getCount();
+			boolean hasSession = hasSession();
+			if (!hasSession) {
+				if (isOverTerminateLength(count)) {
+					terminate();
+				}
+			}
+			else {
+				if (!refresh && hasSession && isOverRefreshLength(count)) {
+					refresh = true;
+					doRefresh();
+				}
+				else if (isOverTerminateLength(count)) {
+					terminate();
+				}
 			}
 		}
-		else { 
-			if (!refresh && hasSession && isOverRefreshLength(count)) {
-				refresh = true;
-				doRefresh();
-			}
-			else if (isOverTerminateLength(count)) {
-				terminate();
-			}
-		}
+	}
+	
+	protected void appendMessageHeader() throws IOException {
+	}
+	
+	protected void appendMessageTrailer() throws IOException {
 	}
 	
 	protected abstract void doRefresh() throws IOException;

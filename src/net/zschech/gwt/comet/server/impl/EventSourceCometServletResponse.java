@@ -1,5 +1,5 @@
 /*
- * Copyright 2009 Richard Zschech.
+ * Copyright 2010 Richard Zschech.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -31,23 +31,23 @@ import com.google.gwt.user.server.rpc.SerializationPolicy;
  * 
  * @author Richard Zschech
  */
-public class OperaEventSourceCometServletResponse extends RawDataCometServletResponse {
+public class EventSourceCometServletResponse extends RawDataCometServletResponse {
 	
-	public OperaEventSourceCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
+	public EventSourceCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
 		super(request, response, serializationPolicy, clientOracle, servlet, async, heartbeat);
 	}
 	
 	@Override
 	protected void setupHeaders(HttpServletResponse response) {
 		super.setupHeaders(response);
-		response.setContentType("application/x-dom-event-stream");
+		response.setContentType("text/event-stream");
 		// disable HTTP chunking
 		response.setHeader("Connection", "Close");
 	}
-
+	
 	@Override
 	protected void appendMessageHeader() throws IOException {
-		writer.append("Event: e\ndata: ");
+		writer.append("data: ");
 	}
 	
 	@Override

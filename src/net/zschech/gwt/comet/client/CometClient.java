@@ -20,10 +20,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.zschech.gwt.comet.client.impl.CometTransport;
+import net.zschech.gwt.comet.client.impl.EventSourceCometTransport;
+import net.zschech.gwt.eventsource.client.EventSource;
 
 import com.google.gwt.core.client.Duration;
 import com.google.gwt.core.client.GWT;
-import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.user.client.Timer;
 
 /**
@@ -275,7 +276,12 @@ public class CometClient {
 		private double lastReceivedTime;
 		
 		public CometClientTransportWrapper() {
-			transport = GWT.create(CometTransport.class);
+			if (EventSource.isSupported()) {
+				transport = new EventSourceCometTransport();
+			}
+			else {
+				transport = GWT.create(CometTransport.class);
+			}
 			transport.initiate(CometClient.this, this);
 		}
 		
@@ -375,23 +381,5 @@ public class CometClient {
 				}
 			};
 		}
-		
 	}
-	
-	// TODO precompile all regexps
-	public native static JsArrayString split(String string, String separator) /*-{
-		return string.split(separator);
-	}-*/;
-	
-	/*
-	 * @Override public void start() { if (!closing) { Window.addWindowCloseListener(windowListener); super.start(); } }
-	 * 
-	 * @Override public void stop() { super.stop(); Window.removeWindowCloseListener(windowListener); }
-	 * 
-	 * private WindowCloseListener windowListener = new WindowCloseListener() {
-	 * 
-	 * @Override public void onWindowClosed() { closing = true; }
-	 * 
-	 * @Override public String onWindowClosing() { return null; } };
-	 */
 }

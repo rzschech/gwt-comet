@@ -197,7 +197,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		for (char i = ESCAPE_START; i <= ESCAPE_END; i++) {
 			result.append(i);
 		}
-		result.append("\n\r\r\n\\/\b\f\n\t");
+		result.append("\n\r\r\n\\/\n\t");
 		result.append("')</script>");
 		result.append(' ');
 		ESCAPE = result.toString();
@@ -513,7 +513,7 @@ public class CometTestEntryPoint implements EntryPoint {
 			assertTrue("status code exception", exception instanceof StatusCodeException);
 			if (exception instanceof StatusCodeException) {
 				assertEquals("status code", 417, ((StatusCodeException) exception).getStatusCode());
-				assertEquals("status message", "Oh Noes!", ((StatusCodeException) exception).getMessage());
+				assertEquals("status message", "Oh Noes!", ((StatusCodeException) exception).getEncodedResponse());
 			}
 			stop();
 		}
@@ -728,7 +728,7 @@ public class CometTestEntryPoint implements EntryPoint {
 				doStart(url, null);
 			}
 		}
-
+		
 		@Override
 		public void onConnected(int heartbeat) {
 			output("connected", "silver");

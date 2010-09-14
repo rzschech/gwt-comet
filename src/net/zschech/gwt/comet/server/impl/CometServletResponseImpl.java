@@ -31,6 +31,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.servlet.ServletResponse;
+import javax.servlet.ServletResponseWrapper;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -115,6 +117,14 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		return response;
 	}
 	
+	protected HttpServletResponse getUnwrappedResponse() {
+		ServletResponse result = response;
+		while (result instanceof ServletResponseWrapper) {
+			result = ((ServletResponseWrapper) result).getResponse();
+		}
+		return (HttpServletResponse) result;
+	}
+	
 	@Override
 	public CometSession getSession() {
 		return getSession(true);
@@ -174,9 +184,8 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			throw new IllegalStateException("sendError can not be accessed after the CometServletResponse has been suspended.");
 		}
 		try {
-			getResponse().reset();
-			response.setHeader("Cache-Control", "no-cache");
-			response.setCharacterEncoding("UTF-8");
+			response.reset();
+			setupHeaders(response);
 			
 			OutputStream outputStream = response.getOutputStream();
 			writer = new OutputStreamWriter(outputStream, "UTF-8");
@@ -192,8 +201,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	public synchronized void initiate() throws IOException {
-		response.setHeader("Cache-Control", "no-cache");
-		response.setCharacterEncoding("UTF-8");
+		setupHeaders(response);
 		
 		OutputStream outputStream = response.getOutputStream();
 		asyncOutputStream = outputStream = async.getOutputStream(outputStream);
@@ -221,6 +229,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 				prevResponse.tryTerminate();
 			}
 		}
+	}
+	
+	protected void setupHeaders(HttpServletResponse response) {
+		response.setHeader("Cache-Control", "no-cache");
 	}
 	
 	public void suspend() {

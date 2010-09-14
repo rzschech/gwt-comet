@@ -15,17 +15,11 @@
  */
 package net.zschech.gwt.comet.client.impl;
 
-import java.util.Collections;
-
 import net.zschech.gwt.comet.client.CometClient;
-import net.zschech.gwt.comet.client.CometException;
 import net.zschech.gwt.comet.client.CometListener;
-import net.zschech.gwt.comet.client.CometSerializer;
 
 import com.google.gwt.user.client.DOM;
 import com.google.gwt.user.client.Element;
-import com.google.gwt.user.client.rpc.SerializationException;
-import com.google.gwt.user.client.rpc.StatusCodeException;
 
 /**
  * This class uses Opera's event-source element to stream events.<br/>
@@ -33,14 +27,14 @@ import com.google.gwt.user.client.rpc.StatusCodeException;
  * 
  * The main issue with Opera's implementation is that we can't detect connection events. To support this three event
  * listeners are setup: one "s" for string messages, one "o" for the GWT serialized object messages, and the other "c"
- * for connection events. The server sends the event "c" as soon as the connection is established and "d"
- * when the connection is terminated. A connection timer is setup to detect initial connection errors. To detect
- * subsequent connection failure it also sends a heart beat events "h" when no messages have been sent for a specified
- * heart beat interval.
+ * for connection events. The server sends the event "c" as soon as the connection is established and "d" when the
+ * connection is terminated. A connection timer is setup to detect initial connection errors. To detect subsequent
+ * connection failure it also sends a heart beat events "h" when no messages have been sent for a specified heart beat
+ * interval.
  * 
  * @author Richard Zschech
  */
-public class OperaEventSourceCometTransport extends CometTransport {
+public class OperaEventSourceCometTransport extends RawDataCometTransport {
 	
 	private Element eventSource;
 	private boolean connected;
@@ -48,111 +42,41 @@ public class OperaEventSourceCometTransport extends CometTransport {
 	@Override
 	public void initiate(CometClient client, CometListener listener) {
 		super.initiate(client, listener);
-		eventSource = createEventSource(this);
 	}
 	
 	@Override
 	public void connect(int connectionCount) {
+		eventSource = createEventSource(this);
 		DOM.setElementAttribute(eventSource, "src", getUrl(connectionCount));
 	}
 	
 	@Override
 	public void disconnect() {
-		DOM.setElementAttribute(eventSource, "src", "");
-		if (connected) {
+		if (eventSource != null) {
+			DOM.setElementAttribute(eventSource, "src", "");
+			eventSource = null;
 			connected = false;
-			listener.onDisconnected();
 		}
 	}
 	
 	private static native Element createEventSource(OperaEventSourceCometTransport client) /*-{
 		var eventSource = document.createElement("event-source");
 
-		var stringMessageHandler = $entry(function(event) {
-			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onString(Ljava/lang/String;)(event.data);
+		var eventHandler = $entry(function(event) {
+			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onEvent(Ljava/lang/String;)(event.data);
 		});
 
-		eventSource.addEventListener("s", stringMessageHandler, false);
-
-		var objectMessageHandler = $entry(function(event) {
-			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onObject(Ljava/lang/String;)(event.data);
-		});
-
-		eventSource.addEventListener("o", objectMessageHandler, false);
-
-		var connectionHandler = $entry(function(event) {
-			client.@net.zschech.gwt.comet.client.impl.OperaEventSourceCometTransport::onConnection(Ljava/lang/String;)(event.data);
-		});
-
-		eventSource.addEventListener("c", connectionHandler, false);
+		eventSource.addEventListener("e", eventHandler, false);
 
 		return eventSource;
 	}-*/;
 	
-	@SuppressWarnings("unused")
-	private void onString(String message) {
-		listener.onMessage(Collections.singletonList(HTTPRequestCometTransport.unescape(message)));
-	}
-	
-	@SuppressWarnings("unused")
-	private void onObject(String message) {
-		CometSerializer serializer = client.getSerializer();
-		if (serializer == null) {
-			listener.onError(new SerializationException("Can not deserialize message with no serializer: " + message), true);
-		}
-		else {
-			try {
-				listener.onMessage(Collections.singletonList(serializer.parse(message)));
-			}
-			catch (SerializationException e) {
-				listener.onError(e, true);
-			}
-		}
-	}
-	
-	@SuppressWarnings("unused")
-	private void onConnection(String message) {
-		if (message.startsWith("c")) {
-			connected = true;
-			String hertbeatParameter = message.substring(1);
-			try {
-				listener.onConnected(Integer.parseInt(hertbeatParameter));
-			}
-			catch (NumberFormatException e) {
-				listener.onError(new CometException("Unexpected heartbeat parameter: " + hertbeatParameter), true);
-			}
-		}
-		else if (message.startsWith("e")) {
+	private void onEvent(String message) {
+		connected = true;
+		parse(message);
+		if (expectingDisconnection) {
 			disconnect();
-			String status = message.substring(1);
-			try {
-				int statusCode;
-				String statusMessage;
-				int index = status.indexOf(' ');
-				if (index == -1) {
-					statusCode = Integer.parseInt(status);
-					statusMessage = null;
-				}
-				else {
-					statusCode = Integer.parseInt(status.substring(0, index));
-					statusMessage = HTTPRequestCometTransport.unescape(status.substring(index + 1));
-				}
-				listener.onError(new StatusCodeException(statusCode, statusMessage), false);
-			}
-			catch (NumberFormatException e) {
-				listener.onError(new CometException("Unexpected status code: " + status), false);
-			}
-		}
-		else if (message.equals("d")) {
-			connected = false;
-			disconnect();
-			listener.onDisconnected();
-		}
-		else if (message.equals("h")) {
-			listener.onHeartbeat();
-		}
-		else {
-			listener.onError(new CometException("Unexpected connection status: " + message), true);
+			disconnected();
 		}
 	}
 }

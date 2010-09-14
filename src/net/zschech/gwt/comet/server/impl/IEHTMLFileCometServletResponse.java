@@ -16,6 +16,7 @@
 package net.zschech.gwt.comet.server.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.List;
 
@@ -57,9 +58,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	}
 	
 	@Override
-	public void initiate() throws IOException {
-		getResponse().setContentType("text/html");
-		
+	public synchronized void initiate() throws IOException {
 		super.initiate();
 		
 		writer.append(HEAD);
@@ -72,6 +71,18 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 		writer.append(MID);
 		writer.append(Integer.toString(getHeartbeat()));
 		writer.append(TAIL);
+	}
+	
+	@Override
+	protected void setupHeaders(HttpServletResponse response) {
+		super.setupHeaders(response);
+		response.setContentType("text/html");
+		response.setCharacterEncoding("UTF-8");
+	}
+	
+	@Override
+	protected OutputStream getOutputStream(OutputStream outputStream) {
+		return setupCountOutputStream(outputStream);
 	}
 	
 	@Override
@@ -95,7 +106,6 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	
 	@Override
 	protected void doSendError(int statusCode, String message) throws IOException {
-		getResponse().setContentType("text/html");
 		writer.append("<html><script>parent.e(").append(Integer.toString(statusCode));
 		if (message != null) {
 			writer.append(",'").append(escapeString(message)).append('\'');
@@ -143,7 +153,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	
 	@Override
 	protected boolean isOverRefreshLength(int written) {
-		if (length != null) {
+		if (length != 0) {
 			return written > length;
 		}
 		else {
