@@ -632,14 +632,19 @@ public class CometTestEntryPoint implements EntryPoint {
 	class LatencyTest extends MessagingTest {
 		
 		private double latency;
+		private double min = Double.MAX_VALUE;
+		private double max = Double.MIN_VALUE;
 		
 		LatencyTest(boolean session, boolean refresh, SerialMode mode) {
 			super("latency", session, refresh, mode, 1000, 1, 10);
 		}
 		
+		@Override
 		void reset() {
 			super.reset();
 			latency = 0;
+			min = Double.MAX_VALUE;
+			max = Double.MIN_VALUE;
 		}
 		
 		@Override
@@ -657,7 +662,17 @@ public class CometTestEntryPoint implements EntryPoint {
 				else {
 					continue;
 				}
-				latency += now - message;
+				double messageLatency = now - message;
+				latency += messageLatency;
+				if (messageLatency < min) {
+					min = messageLatency;
+				}
+				if (messageLatency > max) {
+					max = messageLatency;
+				}
+				if (messageLatency > 250) {
+					output("latency " + messageLatency, "red");
+				}
 			}
 		}
 		
@@ -665,6 +680,8 @@ public class CometTestEntryPoint implements EntryPoint {
 		void outputStats() {
 			super.outputStats();
 			output("latency   : " + latency / messageCount + "ms", "black");
+			output("min       : " + min + "ms", "black");
+			output("max       : " + max + "ms", "black");
 		}
 	}
 	
