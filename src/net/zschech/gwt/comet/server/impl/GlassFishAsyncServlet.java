@@ -56,6 +56,6 @@ public class GlassFishAsyncServlet extends AbstractGrizzlyAsyncServlet {
 	
 	@Override
 	protected Selector getSelector(CometServletResponseImpl response) {
-		return (Selector) get("response.facade.response.coyoteResponse.hook.selectorHandler.selector", response.getResponse());
+		return (Selector) get("response.facade.response.coyoteResponse.hook.selectorHandler.selector", response.getUnwrappedResponse());
 	}
 }

@@ -59,6 +59,6 @@ public class GrizzlyAsyncServlet extends AbstractGrizzlyAsyncServlet {
 
 	@Override
 	protected Selector getSelector(CometServletResponseImpl response) {
-		return (Selector) get("response.response.hook.selectorHandler.selector", response.getResponse());
+		return (Selector) get("response.response.hook.selectorHandler.selector", response.getUnwrappedResponse());
 	}
 }
