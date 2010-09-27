@@ -729,7 +729,6 @@ public class CometTestEntryPoint implements EntryPoint {
 		}
 		
 		private void doTest(int min, int max) {
-			System.out.println(min + " " + max);
 			if (min == max) {
 				output("padding required: " + min, "lime");
 				pass();
@@ -760,8 +759,7 @@ public class CometTestEntryPoint implements EntryPoint {
 		
 		@Override
 		public void onError(Throwable exception, boolean connected) {
-			System.out.println("error " + exception);
-			output(exception.toString(), "silver");
+			output("error " + exception.toString(), "silver");
 			doStop();
 			doTest(padding + 1, max);
 		}
@@ -785,9 +783,3 @@ public class CometTestEntryPoint implements EntryPoint {
 		scrollPanel.scrollToBottom();
 	}
 }
-
-
-//
-//* Fix issue 1
-//* New test page
-//* 
