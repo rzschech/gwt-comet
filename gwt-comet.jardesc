@@ -1,6 +1,6 @@
 <jardesc>
-    <jar path="gwt-comet/gwt-comet-1.0.12.jar"/>
-    <options buildIfNeeded="true" compress="true" descriptionLocation="/gwt-comet/gwt-comet.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="false" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
+    <jar path="gwt-comet/gwt-comet-1.2.0.jar"/>
+    <options buildIfNeeded="true" compress="true" descriptionLocation="/gwt-comet-trunk/gwt-comet.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="false" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
     <manifest generateManifest="true" manifestLocation="" manifestVersion="1.0" reuseManifest="false" saveManifest="false" usesManifest="true">
@@ -17,6 +17,8 @@
         <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.server.impl"/>
         <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.server.deflate"/>
         <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.comet.rebind"/>
+        <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.eventsource"/>
+        <javaElement handleIdentifier="=gwt-comet/src&lt;net.zschech.gwt.eventsource.client"/>
     </selectedElements>
     <fatjar builder="org.eclipse.jdt.ui.plain_jar_builder" launchConfig=""/>
 </jardesc>
