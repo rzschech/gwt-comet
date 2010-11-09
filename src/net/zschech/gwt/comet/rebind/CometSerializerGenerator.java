@@ -111,7 +111,8 @@ public class CometSerializerGenerator extends Generator {
 				}
 				
 				// Create the serializer
-				TypeSerializerCreator tsc = new TypeSerializerCreator(logger, typesSentFromBrowser, typesSentToBrowser, context, "comet." + typeName.replace('.', '_') + "Serializer");
+				String modifiedTypeName = typeName.replace('.', '_') + "Serializer";
+				TypeSerializerCreator tsc = new TypeSerializerCreator(logger, typesSentFromBrowser, typesSentToBrowser, context, "comet." + modifiedTypeName, modifiedTypeName);
 				String realize = tsc.realize(logger);
 				
 				// Create the CometSerializer impl
