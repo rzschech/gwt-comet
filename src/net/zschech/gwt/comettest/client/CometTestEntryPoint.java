@@ -119,6 +119,8 @@ public class CometTestEntryPoint implements EntryPoint {
 			new OrderTest(false, false, SerialMode.DE_RPC),
 		}, {
 			new PaddingTest()
+		}, {
+			new SlowBrowserTest()
 		}};
 		
 		FlowPanel controls = new FlowPanel();
@@ -622,11 +624,6 @@ public class CometTestEntryPoint implements EntryPoint {
 		ThroughputTest(boolean session, boolean refresh, SerialMode mode) {
 			super("throughput", session, refresh, mode, 100, 10, 0);
 		}
-		
-		@Override
-		void stop() {
-			super.stop();
-		}
 	}
 	
 	class LatencyTest extends MessagingTest {
@@ -762,6 +759,24 @@ public class CometTestEntryPoint implements EntryPoint {
 			output("error " + exception.toString(), "silver");
 			doStop();
 			doTest(padding + 1, max);
+		}
+	}
+	
+	class SlowBrowserTest extends MessagingTest {
+		
+		SlowBrowserTest() {
+			super("slowbrowser", true, true, null, 36000, 1, 10);
+		}
+
+		
+		@Override
+		public void onMessage(List<? extends Serializable> messages) {
+			double time = Duration.currentTimeMillis();
+			int waitTime = 5;
+			output("waiting " + waitTime + "s", "black");
+			while (Duration.currentTimeMillis() < time + waitTime * 1000) {
+			}
+			output("waited " + waitTime + "s", "black");
 		}
 	}
 	
