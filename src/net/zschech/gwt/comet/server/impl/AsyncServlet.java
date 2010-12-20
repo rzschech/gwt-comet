@@ -108,25 +108,51 @@ public abstract class AsyncServlet {
 	
 	private ServletContext context;
 	
+	/**
+	 * Override for web-server specific initialisation  
+	 * @throws ServletException  
+	 */
 	protected void init(ServletContext context) throws ServletException {
 		this.context = context;
 	}
 	
+	/**
+	 * Override for web-server specific shutdown  
+	 */
 	protected void shutdown() {
 	}
 	
+	/**
+	 * @return the servlet context associated with this AsyncServlet
+	 */
 	protected ServletContext getServletContext() {
 		return context;
 	}
 	
+	/**
+	 * Log a message to the servlet context
+	 * @see ServletContext#log(String)
+	 * @param message
+	 */
 	protected void log(String message) {
 		context.log(message);
 	}
 	
+	/**
+	 * Log a message to the servlet context
+	 * @see ServletContext#log(String, Throwable)
+	 * @param message
+	 * @param throwable
+	 */
 	protected void log(String message, Throwable throwable) {
 		context.log(message, throwable);
 	}
 	
+	/**
+	 * Gets a web-server specific wrapper for the servlet response output stream.
+	 * @param outputStream
+	 * @return the web-server specific wrapper 
+	 */
 	public OutputStream getOutputStream(OutputStream outputStream) {
 		return outputStream;
 	}
@@ -138,15 +164,32 @@ public abstract class AsyncServlet {
 	public abstract void invalidate(CometSessionImpl session);
 	
 	public abstract void enqueued(CometSessionImpl session);
-	
+
+	/**
+	 * web-server specific implementation of updating the access time of the HTTP session
+	 * @param httpSession
+	 * @return true if the access time was updated successfully
+	 */
 	protected boolean access(HttpSession httpSession) {
 		return false;
 	}
 	
+	/**
+	 * web-server specific implementation of scheduling a heartbeat
+	 * @param response
+	 * @param session
+	 * @return null if no scheduling is required
+	 */
 	public ScheduledFuture<?> scheduleHeartbeat(CometServletResponseImpl response, CometSessionImpl session) {
 		return null;
 	}
 	
+	/**
+	 * web-server specific implementation of scheduling a session keep alive
+	 * @param response
+	 * @param session
+	 * @return null if no scheduling is required
+	 */
 	public ScheduledFuture<?> scheduleSessionKeepAlive(CometServletResponseImpl response, CometSessionImpl session) {
 		return null;
 	}

@@ -58,22 +58,6 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	}
 	
 	@Override
-	public synchronized void initiate() throws IOException {
-		super.initiate();
-		
-		writer.append(HEAD);
-		String domain = getRequest().getParameter("d");
-		if (domain != null) {
-			writer.append("document.domain='");
-			writer.append(domain);
-			writer.append("';");
-		}
-		writer.append(MID);
-		writer.append(Integer.toString(getHeartbeat()));
-		writer.append(TAIL);
-	}
-	
-	@Override
 	protected void setupHeaders(HttpServletResponse response) {
 		super.setupHeaders(response);
 		response.setContentType("text/html");
@@ -88,6 +72,20 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	@Override
 	protected int getPaddingRequired() {
 		return PADDING_REQUIRED;
+	}
+	
+	@Override
+	protected void doInitiate(int heartbeat) throws IOException {
+		writer.append(HEAD);
+		String domain = getRequest().getParameter("d");
+		if (domain != null) {
+			writer.append("document.domain='");
+			writer.append(domain);
+			writer.append("';");
+		}
+		writer.append(MID);
+		writer.append(Integer.toString(heartbeat));
+		writer.append(TAIL);
 	}
 	
 	@Override
@@ -166,8 +164,8 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 		return isOverRefreshLength(written * 10);
 	}
 	
-	private static CharSequence escapeString(CharSequence string) {
-		int length = (string != null) ? string.length() : 0;
+	private CharSequence escapeString(CharSequence string) {
+		int length = string.length();
 		int i = 0;
 		loop: while (i < length) {
 			char ch = string.charAt(i);
@@ -184,8 +182,9 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 			i++;
 		}
 		
-		if (i == length)
+		if (i == length) {
 			return string;
+		}
 		
 		StringBuilder str = new StringBuilder(string.length() * 2);
 		str.append(string, 0, i);
@@ -224,8 +223,8 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 		return str;
 	}
 	
-	private static CharSequence escapeObject(CharSequence string) {
-		int length = (string != null) ? string.length() : 0;
+	private CharSequence escapeObject(CharSequence string) {
+		int length = string.length();
 		int i = 0;
 		loop: while (i < length) {
 			char ch = string.charAt(i);
@@ -238,8 +237,9 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 			i++;
 		}
 		
-		if (i == length)
+		if (i == length) {
 			return string;
+		}
 		
 		StringBuilder str = new StringBuilder(string.length() * 2);
 		str.append(string, 0, i);

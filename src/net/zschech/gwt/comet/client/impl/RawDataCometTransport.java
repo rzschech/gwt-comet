@@ -70,12 +70,12 @@ public abstract class RawDataCometTransport extends CometTransport {
 			char c = message.charAt(0);
 			switch (c) {
 			case '!':
-				String hertbeatParameter = message.substring(1);
+				String heartbeatParameter = message.substring(1);
 				try {
-					listener.onConnected(Integer.parseInt(hertbeatParameter));
+					listener.onConnected(Integer.parseInt(heartbeatParameter));
 				}
 				catch (NumberFormatException e) {
-					listener.onError(new CometException("Unexpected heartbeat parameter: " + hertbeatParameter), true);
+					listener.onError(new CometException("Unexpected heartbeat parameter: " + heartbeatParameter), true);
 				}
 				break;
 			case '?':
@@ -116,6 +116,7 @@ public abstract class RawDataCometTransport extends CometTransport {
 				break;
 			default:
 				if (c >= '0' && c <= '9') {
+					// error codes
 					expectingDisconnection = true;
 					try {
 						int statusCode;
@@ -143,8 +144,7 @@ public abstract class RawDataCometTransport extends CometTransport {
 		}
 	}
 	
-	// TODO PRIVATE
-	static String unescape(String string) {
+	private String unescape(String string) {
 		return string.replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\");
 	}
 }

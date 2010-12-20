@@ -16,7 +16,6 @@
 package net.zschech.gwt.comet.server.impl;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;

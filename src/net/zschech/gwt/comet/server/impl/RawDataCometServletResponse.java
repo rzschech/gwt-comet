@@ -51,15 +51,6 @@ public abstract class RawDataCometServletResponse extends ManagedStreamCometServ
 	}
 	
 	@Override
-	public synchronized void initiate() throws IOException {
-		super.initiate();
-		// send connection event to client
-		appendMessageHeader();
-		writer.append('!').append(String.valueOf(getHeartbeat()));
-		appendMessageTrailer();
-	}
-	
-	@Override
 	protected void appendMessageTrailer() throws IOException {
 		writer.append('\n');
 	}
@@ -81,6 +72,14 @@ public abstract class RawDataCometServletResponse extends ManagedStreamCometServ
 		else {
 			return PADDING_STRING.substring(padding);
 		}
+	}
+
+	@Override
+	protected void doInitiate(int heartbeat) throws IOException {
+		// send connection event to client
+		appendMessageHeader();
+		writer.append('!').append(String.valueOf(heartbeat));
+		appendMessageTrailer();
 	}
 	
 	@Override
@@ -150,8 +149,8 @@ public abstract class RawDataCometServletResponse extends ManagedStreamCometServ
 		return false;
 	}
 	
-	static CharSequence escape(CharSequence string) {
-		int length = (string != null) ? string.length() : 0;
+	private CharSequence escape(CharSequence string) {
+		int length = string.length();
 		int i = 0;
 		loop: while (i < length) {
 			char ch = string.charAt(i);
@@ -164,8 +163,9 @@ public abstract class RawDataCometServletResponse extends ManagedStreamCometServ
 			i++;
 		}
 		
-		if (i == length)
+		if (i == length) {
 			return string;
+		}
 		
 		StringBuilder str = new StringBuilder(string.length() * 2);
 		str.append(string, 0, i);

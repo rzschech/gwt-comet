@@ -125,6 +125,10 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		return (HttpServletResponse) result;
 	}
 	
+	CometSessionImpl getSessionImpl() {
+		return session;
+	}
+	
 	@Override
 	public CometSession getSession() {
 		return getSession(true);
@@ -143,7 +147,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 			return null;
 		}
 		
-		session = (CometSessionImpl) CometServlet.getCometSession(httpSession, create, create ? new ConcurrentLinkedQueue<Serializable>() : null);
+		session = (CometSessionImpl) CometServlet.getCometSession(httpSession, create);
 		if (create) {
 			session.setLastAccessedTime();
 			scheduleSessionKeepAlive();
@@ -229,6 +233,8 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 				prevResponse.tryTerminate();
 			}
 		}
+		
+		doInitiate(heartbeat);
 	}
 	
 	protected void setupHeaders(HttpServletResponse response) {
@@ -253,7 +259,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 				}
 				else {
 					flush = s.getQueue().isEmpty();
-					
 				}
 				
 				if (flush) {
@@ -423,6 +428,8 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		return (maxInactiveInterval * 1000) - (System.currentTimeMillis() - lastAccessedTime) - SESSION_KEEP_ALIVE_BUFFER;
 	}
 	
+	protected abstract void doInitiate(int heartbeat) throws IOException;
+	
 	protected abstract void doSendError(int statusCode, String message) throws IOException;
 	
 	protected abstract void doSuspend() throws IOException;
@@ -487,7 +494,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 	}
 	
-	public boolean setProcessing(boolean processing) {
+	boolean setProcessing(boolean processing) {
 		return this.processing.compareAndSet(!processing, processing);
 	}
 }

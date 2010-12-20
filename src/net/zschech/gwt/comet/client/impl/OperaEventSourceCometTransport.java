@@ -59,7 +59,7 @@ public class OperaEventSourceCometTransport extends RawDataCometTransport {
 		}
 	}
 	
-	private static native Element createEventSource(OperaEventSourceCometTransport client) /*-{
+	private native Element createEventSource(OperaEventSourceCometTransport client) /*-{
 		var eventSource = document.createElement("event-source");
 
 		var eventHandler = $entry(function(event) {

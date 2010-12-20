@@ -102,7 +102,7 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		}
 	}
 	
-	private static native IFrameElement createIFrame(IEHTMLFileCometTransport client, String html) /*-{
+	private native IFrameElement createIFrame(IEHTMLFileCometTransport client, String html) /*-{
 		var htmlfile = new ActiveXObject("htmlfile");
 		htmlfile.open();
 		htmlfile.write(html);
@@ -134,11 +134,11 @@ public class IEHTMLFileCometTransport extends CometTransport {
 		return htmlfile.documentElement.getElementsByTagName("iframe").item(0);
 	}-*/;
 	
-	private native static String getDocumentDomain() /*-{
+	private native String getDocumentDomain() /*-{
 		return $doc.domain;
 	}-*/;
 	
-	private native static String getDomain(String documentDomain, String url) /*-{
+	private native String getDomain(String documentDomain, String url) /*-{
  		var urlParts = /(^https?:)?(\/\/(([^:\/\?#]+)(:(\d+))?))?([^\?#]*)/.exec(url);
         var urlDomain = urlParts[4];
         

@@ -86,7 +86,7 @@ public class CometServlet extends HttpServlet {
 	}
 	
 	@Override
-	protected void doGet(final HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		try {
 			int requestHeartbeat = getHeartbeat();
 			String requestedHeartbeat = request.getParameter("heartbeat");
@@ -284,12 +284,12 @@ public class CometServlet extends HttpServlet {
 	}
 	
 	public static CometSession getCometSession(HttpSession httpSession, boolean create) {
-		return getCometSession(httpSession, create, new ConcurrentLinkedQueue<Serializable>());
+		return getCometSession(httpSession, create, create ? new ConcurrentLinkedQueue<Serializable>() : null);
 	}
 	
 	public static CometSession getCometSession(HttpSession httpSession, boolean create, Queue<Serializable> queue) {
 		synchronized (httpSession) {
-			CometSessionImpl session = (CometSessionImpl) httpSession.getAttribute(CometSession.HTTP_SESSION_KEY);
+			CometSession session = (CometSession) httpSession.getAttribute(CometSession.HTTP_SESSION_KEY);
 			if (session == null) {
 				if (create) {
 					session = new CometSessionImpl(httpSession, queue, AsyncServlet.initialize(httpSession.getServletContext()));
