@@ -45,10 +45,17 @@ public abstract class CometTransport {
 	public abstract void disconnect();
 	
 	public String getUrl(int connectionCount) {
-		String url = client.getUrl();
+		StringBuilder url = new StringBuilder(client.getUrl());
 		if (client.getSerializer() != null && client.getSerializer().getMode() == SerialMode.DE_RPC) {
-			url += (url.contains("?") ? "&" : "?") + MODULE_BASE_PARAMETER + '=' + GWT.getModuleBaseURL() + '&' + STRONG_NAME_PARAMETER + '=' + GWT.getPermutationStrongName();
+			url.append(url.indexOf("?") > 0 ? '&' : '?');
+			url.append(MODULE_BASE_PARAMETER).append('=').append(GWT.getModuleBaseURL());
+			url.append('&').append(STRONG_NAME_PARAMETER).append('=').append(GWT.getPermutationStrongName());
 		}
-		return url + (url.contains("?") ? "&" : "?") + "t=" + Integer.toString((int) (Duration.currentTimeMillis() % Integer.MAX_VALUE), Character.MAX_RADIX).toUpperCase() + "&c=" + connectionCount;
+		
+		url.append(url.indexOf("?") > 0 ? '&' : '?');
+		url.append("t=").append(Integer.toString((int) (Duration.currentTimeMillis() % Integer.MAX_VALUE), Character.MAX_RADIX));
+		url.append("&c=").append(Integer.toString(connectionCount, Character.MAX_RADIX));
+		
+		return url.toString();
 	}
 }
