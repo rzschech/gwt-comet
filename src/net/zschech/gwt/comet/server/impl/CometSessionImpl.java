@@ -128,8 +128,6 @@ public class CometSessionImpl implements CometSession {
 			else {
 				windowSize = Math.min(windowSize * WINDOW_SIZE_MULTIPLIER, MAX_WINDOW_SIZE);
 			}
-			System.out.println("Refresh Time " + refreshTime + " Window Size " + windowSize);
-			
 		}
 		
 		return this.response.getAndSet(response);
