@@ -52,7 +52,7 @@ public class Servlet30AsyncServlet extends NonBlockingAsyncServlet {
 		});
 		
 		asyncContext.setTimeout(Long.MAX_VALUE);
-		write(response);
+		write(response, session);
 		return asyncContext;
 	}
 	
@@ -72,7 +72,7 @@ public class Servlet30AsyncServlet extends NonBlockingAsyncServlet {
 		final CometServletResponseImpl response = session.getResponse();
 		if (response != null) {
 			synchronized (response) {
-				write(response);
+				write(response, session);
 			}
 		}
 	}
@@ -85,22 +85,22 @@ public class Servlet30AsyncServlet extends NonBlockingAsyncServlet {
 		}
 	}
 	
-	private void write(final CometServletResponseImpl response) {
+	private void write(final CometServletResponseImpl response, final CometSessionImpl session) {
 		assert Thread.holdsLock(response);
-		if (response.checkSessionQueue(false)) {
+		if (!session.isEmpty()) {
 			final AsyncContext asyncContext = (AsyncContext) response.getSuspendInfo();
 			asyncContext.start(new Runnable() {
 				@Override
 				public void run() {
 					synchronized (response) {
 						try {
-							response.writeSessionQueue(true);
+							session.writeQueue(response, true);
 						}
 						catch (IOException e) {
 							log("Error writing session messages");
 						}
 						
-						if (response.checkSessionQueue(false)) {
+						if (!session.isEmpty()) {
 							asyncContext.start(this);
 						}
 					}

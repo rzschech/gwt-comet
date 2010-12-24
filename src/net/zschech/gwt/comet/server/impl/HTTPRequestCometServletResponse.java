@@ -72,26 +72,16 @@ public class HTTPRequestCometServletResponse extends RawDataCometServletResponse
 	}
 	
 	@Override
-	protected boolean isOverRefreshLength(int written) {
-		if (length != 0) {
-			return written > length;
-		}
-		else {
-			// if (chrome) {
-			// Chrome seems to have a problem with lots of small messages consuming lots of memory.
-			// I'm guessing for each readyState = 3 event it copies the responseText from its IO system to its
-			// JavaScript
-			// engine and does not clean up all the events until the HTTP request is finished.
-			return clientMemory > 1024 * 1024;
-			// }
-			// else {
-			// return false;//written > 2 * 1024 * 1024;
-			// }
-		}
-	}
-	
-	@Override
 	protected boolean isOverTerminateLength(int written) {
-		return isOverRefreshLength(written * 10);
+		// if (chrome) {
+		// Chrome seems to have a problem with lots of small messages consuming lots of memory.
+		// I'm guessing for each readyState = 3 event it copies the responseText from its IO system to its
+		// JavaScript
+		// engine and does not clean up all the events until the HTTP request is finished.
+		return clientMemory > 1024 * 1024;
+		// }
+		// else {
+		// return false;//written > 2 * 1024 * 1024;
+		// }
 	}
 }

@@ -23,11 +23,8 @@ import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -50,7 +47,7 @@ import com.google.gwt.user.server.rpc.impl.ServerSerializationStreamWriter;
 
 public abstract class CometServletResponseImpl implements CometServletResponse {
 	
-	private HttpServletRequest request;
+	private final HttpServletRequest request;
 	private final HttpServletResponse response;
 	private CometSessionImpl session;
 	
@@ -96,7 +93,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		return outputStream;
 	}
 	
-	public OutputStream getAsyncOutputStream() {
+	protected OutputStream getAsyncOutputStream() {
 		return asyncOutputStream;
 	}
 	
@@ -105,10 +102,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	}
 	
 	@Override
-	public synchronized HttpServletRequest getRequest() {
-		if (suspended) {
-			throw new IllegalStateException("HttpServletRequest can not be accessed after the CometServletResponse has been suspended.");
-		}
+	public HttpServletRequest getRequest() {
 		return request;
 	}
 	
@@ -244,7 +238,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 	public void suspend() {
 		try {
 			CometSessionImpl s;
-			HttpServletRequest r;
 			synchronized (this) {
 				if (terminated) {
 					return;
@@ -258,7 +251,7 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 					flush = true;
 				}
 				else {
-					flush = s.getQueue().isEmpty();
+					flush = s.isEmpty();
 				}
 				
 				if (flush) {
@@ -267,19 +260,13 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 				
 				suspended = true;
 				
-				// Don't hold onto the request while suspended as it takes up memory.
-				// Also Jetty and possibly other web servers reuse the HttpServletRequests so we can't assume they are still
-				// valid after they have been suspended
-				r = request;
-				request = null;
-				
 				if (!(async instanceof BlockingAsyncServlet)) {
-					suspendInfo = async.suspend(this, s, r);
+					suspendInfo = async.suspend(this, s, request);
 				}
 			}
 			
 			if (async instanceof BlockingAsyncServlet) {
-				async.suspend(this, s, r);
+				async.suspend(this, s, request);
 			}
 		}
 		catch (IOException e) {
@@ -411,21 +398,8 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		servlet.cometTerminated(this, serverInitiated);
 	}
 	
-	private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
-	
 	long getHeartbeatScheduleTime() throws IllegalStateException {
 		return heartbeat - (System.currentTimeMillis() - lastWriteTime);
-	}
-	
-	long getSessionKeepAliveScheduleTime() throws IllegalStateException {
-		assert session != null;
-		HttpSession httpSession = session.getHttpSession();
-		int maxInactiveInterval = httpSession.getMaxInactiveInterval();
-		if (maxInactiveInterval < 0) {
-			return Long.MAX_VALUE;
-		}
-		long lastAccessedTime = Math.max(session.getLastAccessedTime(), httpSession.getLastAccessedTime());
-		return (maxInactiveInterval * 1000) - (System.currentTimeMillis() - lastAccessedTime) - SESSION_KEEP_ALIVE_BUFFER;
 	}
 	
 	protected abstract void doInitiate(int heartbeat) throws IOException;
@@ -456,41 +430,6 @@ public abstract class CometServletResponseImpl implements CometServletResponse {
 		}
 		catch (SerializationException e) {
 			throw new NotSerializableException("Unable to serialize object, message: " + e.getMessage());
-		}
-	}
-	
-	boolean checkSessionQueue(boolean empty) {
-		assert Thread.holdsLock(this);
-		return !terminated && session != null && session.isValid() && (empty ? session.getQueue().isEmpty() : !session.getQueue().isEmpty());
-	}
-	
-	/**
-	 * @param flush flush if the queue is empty
-	 * @throws IOException
-	 */
-	void writeSessionQueue(boolean flush) throws IOException {
-		assert Thread.holdsLock(this);
-		
-		if (!terminated && session.isValid()) {
-			Queue<? extends Serializable> queue = session.getQueue();
-			int batchSize = 10;
-			List<Serializable> messages = batchSize == 1 ? null : new ArrayList<Serializable>(batchSize);
-			
-			Serializable message = queue.remove();
-			if (batchSize == 1) {
-				write(message, flush && queue.isEmpty());
-			}
-			else {
-				messages.add(message);
-				for (int i = 0; i < batchSize - 1; i++) {
-					message = queue.poll();
-					if (message == null) {
-						break;
-					}
-					messages.add(message);
-				}
-				write(messages, flush && queue.isEmpty());
-			}
 		}
 	}
 	

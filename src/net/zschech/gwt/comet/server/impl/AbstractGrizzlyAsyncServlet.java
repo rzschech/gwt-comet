@@ -80,7 +80,7 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 		
 		initSelector(response);
 		
-		CometHandlerImpl handler = new CometHandlerImpl(response);
+		CometHandlerImpl handler = new CometHandlerImpl(response, session);
 		try {
 			cometContext.addCometHandler(handler);
 		}
@@ -149,14 +149,16 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 	private class CometHandlerImpl implements CometHandler<Object> {
 		
 		private final CometServletResponseImpl response;
+		private final CometSessionImpl session;
 		private final boolean chunked;
 		private volatile boolean active;
 		private volatile ByteBuffer buffer;
 		private volatile AtomicInteger activeFailureCount = new AtomicInteger();
 		private AtomicBoolean registered = new AtomicBoolean();
 		
-		public CometHandlerImpl(CometServletResponseImpl response) {
+		public CometHandlerImpl(CometServletResponseImpl response, CometSessionImpl session) {
 			this.response = response;
+			this.session = session;
 			this.chunked = response.getResponse().containsHeader("Transfer-Encoding");
 		}
 		
@@ -211,7 +213,7 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 		@Override
 		public void onInitialize(CometEvent event) throws IOException {
 			synchronized (response) {
-				if (response.checkSessionQueue(false)) {
+				if (!session.isEmpty()) {
 					registerAsyncWrite();
 				}
 			}
@@ -253,8 +255,8 @@ public abstract class AbstractGrizzlyAsyncServlet extends NonBlockingAsyncServle
 						if (buffer == null || !buffer.hasRemaining()) {
 							synchronized (response) {
 								int count;
-								while ((count = output.getCount()) == 0 && response.checkSessionQueue(false)) {
-									response.writeSessionQueue(true);
+								while ((count = output.getCount()) == 0 && !session.isEmpty()) {
+									session.writeQueue(response, true);
 								}
 								
 								if (count == 0) {

@@ -53,6 +53,8 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 		PADDING_STRING = new String(padding);
 	}
 	
+	private int clientMemory;
+	
 	public IEHTMLFileCometServletResponse(HttpServletRequest request, HttpServletResponse response, SerializationPolicy serializationPolicy, ClientOracle clientOracle, CometServlet servlet, AsyncServlet async, int heartbeat) {
 		super(request, response, serializationPolicy, clientOracle, servlet, async, heartbeat);
 	}
@@ -113,6 +115,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	
 	@Override
 	protected void doWrite(List<? extends Serializable> messages) throws IOException {
+		clientMemory *= 2;
 		writer.append("<script>m(");
 		boolean first = true;
 		for (Serializable message : messages) {
@@ -130,6 +133,7 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 				writer.append(',');
 			}
 			writer.append('\'').append(string).append('\'');
+			clientMemory += string.length() + 1;
 		}
 		writer.append(")</script>");
 	}
@@ -150,18 +154,12 @@ public class IEHTMLFileCometServletResponse extends ManagedStreamCometServletRes
 	}
 	
 	@Override
-	protected boolean isOverRefreshLength(int written) {
-		if (length != 0) {
-			return written > length;
-		}
-		else {
-			return written > 4 * 1024 * 1024;
-		}
-	}
-	
-	@Override
 	protected boolean isOverTerminateLength(int written) {
-		return isOverRefreshLength(written * 10);
+//		if(System.currentTimeMillis() - start < 1000) {
+//			return false;
+//		}
+		return clientMemory > 1024 * 1024;
+//			return written > 4 * 1024 * 1024;
 	}
 	
 	private CharSequence escapeString(CharSequence string) {

@@ -19,7 +19,7 @@ public class MessagingTestServlet extends CometServlet {
 	@Override
 	protected void doComet(final CometServletResponse cometResponse) throws ServletException, IOException {
 		HttpServletRequest request = cometResponse.getRequest();
-		final int connectionCount = Integer.parseInt(request.getParameter("c"));
+		final int connectionCount = Integer.parseInt(request.getParameter("c"), Character.MAX_RADIX);
 		final boolean session = "true".equals(request.getParameter("session"));
 		final int count = Integer.parseInt(request.getParameter("count"));
 		final int batch = Integer.parseInt(request.getParameter("batch"));

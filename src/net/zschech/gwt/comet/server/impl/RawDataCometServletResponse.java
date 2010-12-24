@@ -140,11 +140,6 @@ public abstract class RawDataCometServletResponse extends ManagedStreamCometServ
 	}
 	
 	@Override
-	protected boolean isOverRefreshLength(int written) {
-		return false;
-	}
-	
-	@Override
 	protected boolean isOverTerminateLength(int written) {
 		return false;
 	}

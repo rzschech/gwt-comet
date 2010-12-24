@@ -73,19 +73,19 @@ public class BlockingAsyncServlet extends AsyncServlet {
 						response.setProcessing(true);
 						
 						while (session.isValid() && !response.isTerminated()) {
-							while (response.checkSessionQueue(true)) {
-								long sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
-								if (sessionKeepAliveTime <= 0) {
-									if (access(session.getHttpSession())) {
-										session.setLastAccessedTime();
-										sessionKeepAliveTime = response.getSessionKeepAliveScheduleTime();
-									}
-									else {
-										response.tryTerminate();
-										break;
-									}
+							long sessionKeepAliveTime = session.getKeepAliveScheduleTime();
+							if (sessionKeepAliveTime <= 0) {
+								if (access(session.getHttpSession())) {
+									session.setLastAccessedTime();
+									sessionKeepAliveTime = session.getKeepAliveScheduleTime();
 								}
-								
+								else {
+									response.tryTerminate();
+									break;
+								}
+							}
+							
+							if (session.isEmpty()) {
 								long heartBeatTime = response.getHeartbeatScheduleTime();
 								if (heartBeatTime <= 0) {
 									try {
@@ -100,8 +100,11 @@ public class BlockingAsyncServlet extends AsyncServlet {
 								
 								response.setProcessing(false);
 								response.wait(Math.min(sessionKeepAliveTime, heartBeatTime));
+								response.setProcessing(true);
 							}
-							response.writeSessionQueue(true);
+							else {
+								session.writeQueue(response, true);
+							}
 						}
 					}
 				}

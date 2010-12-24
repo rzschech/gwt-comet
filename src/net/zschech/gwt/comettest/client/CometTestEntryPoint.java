@@ -453,8 +453,8 @@ public class CometTestEntryPoint implements EntryPoint {
 		@Override
 		void stop() {
 			assertTrue("connection time", disconnectedTime - connectedTime >= connectionTime - 100);
-			super.stop();
 			outputStats();
+			super.stop();
 		}
 	}
 	
@@ -614,15 +614,15 @@ public class CometTestEntryPoint implements EntryPoint {
 		@Override
 		void stop() {
 			assertTrue("count", count * batch == messageCount);
-			super.stop();
 			outputStats();
+			super.stop();
 		}
 	}
 	
 	class ThroughputTest extends MessagingTest {
 		
 		ThroughputTest(boolean session, boolean refresh, SerialMode mode) {
-			super("throughput", session, refresh, mode, 100, 10, 0);
+			super("throughput", session, refresh, mode, 1000, 10, 0);
 		}
 	}
 	
@@ -765,29 +765,28 @@ public class CometTestEntryPoint implements EntryPoint {
 	class SlowBrowserTest extends MessagingTest {
 		
 		SlowBrowserTest() {
-			super("slowbrowser", true, true, null, 36000, 1, 10);
+			super("slowbrowser", true, true, null, 12000, 1, 0);
 		}
-
 		
 		@Override
 		public void onMessage(List<? extends Serializable> messages) {
-			double time = Duration.currentTimeMillis();
-			int waitTime = 5;
-			output("waiting " + waitTime + "s", "black");
-			while (Duration.currentTimeMillis() < time + waitTime * 1000) {
+			super.onMessage(messages);
+			int waitTime = messages.size() * 10;
+			double time = Duration.currentTimeMillis() + waitTime;
+			while (Duration.currentTimeMillis() < time) {
 			}
-			output("waited " + waitTime + "s", "black");
+			output("waited " + waitTime + "ms " + messages.size() + "messages", "black");
 		}
 	}
 	
 	private static String string(Throwable exception) {
-		String result = exception.toString();
+		StringBuilder result = new StringBuilder(exception.toString());
 		exception = exception.getCause();
 		while (exception != null) {
-			result += "\n" + exception.toString();
+			result.append("\n").append(exception.toString());
 			exception = exception.getCause();
 		}
-		return result;
+		return result.toString();
 	}
 	
 	public void output(String text, String color) {

@@ -74,7 +74,7 @@ public abstract class NonBlockingAsyncServlet extends AsyncServlet {
 	public ScheduledFuture<?> scheduleSessionKeepAlive(final CometServletResponseImpl response, final CometSessionImpl session) {
 		assert Thread.holdsLock(response);
 		try {
-			long keepAliveTime = response.getSessionKeepAliveScheduleTime();
+			long keepAliveTime = session.getKeepAliveScheduleTime();
 			if (keepAliveTime == Long.MAX_VALUE) {
 				return null;
 			}
