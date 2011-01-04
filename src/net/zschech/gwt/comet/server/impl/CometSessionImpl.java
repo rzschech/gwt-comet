@@ -32,7 +32,9 @@ public class CometSessionImpl implements CometSession {
 	private static final int INITIAL_WINDOW_SIZE = 1024 * 2;
 	private static final int MIN_WINDOW_SIZE = 1024;
 	private static final int MAX_WINDOW_SIZE = 1024 * 1024;
+	private static final int IE_MAX_WINDOW_SIZE = 256 * 1024;
 	private static final int WINDOW_SIZE_MULTIPLIER = 2;
+	private static final double TERMINATE_LENGTH_MULTIPLIER = 1.1;
 	private static final int REFRESH_LATENCY_CUTOFF = 1000;
 	
 	private static final long SESSION_KEEP_ALIVE_BUFFER = 10000;
@@ -126,7 +128,7 @@ public class CometSessionImpl implements CometSession {
 				windowSize = Math.max(windowSize / WINDOW_SIZE_MULTIPLIER, MIN_WINDOW_SIZE);
 			}
 			else {
-				windowSize = Math.min(windowSize * WINDOW_SIZE_MULTIPLIER, MAX_WINDOW_SIZE);
+				windowSize = Math.min(windowSize * WINDOW_SIZE_MULTIPLIER, response instanceof IEHTMLFileCometServletResponse ? IE_MAX_WINDOW_SIZE : MAX_WINDOW_SIZE);
 			}
 		}
 		
@@ -154,7 +156,7 @@ public class CometSessionImpl implements CometSession {
 	}
 	
 	boolean isOverTerminateLength(int count) {
-		return count > windowSize * WINDOW_SIZE_MULTIPLIER;
+		return count > windowSize * TERMINATE_LENGTH_MULTIPLIER;
 	}
 	
 	/**
