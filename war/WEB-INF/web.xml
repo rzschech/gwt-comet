@@ -80,6 +80,10 @@
 	</servlet-mapping>
 	<servlet-mapping>
 		<servlet-name>messagingServlet</servlet-name>
+		<url-pattern>/net.zschech.gwt.comettest.CometTest/slowbrowser</url-pattern>
+	</servlet-mapping>
+	<servlet-mapping>
+		<servlet-name>messagingServlet</servlet-name>
 		<url-pattern>/net.zschech.gwt.comettest.CometTest/latency</url-pattern>
 	</servlet-mapping>
 	<servlet-mapping>
