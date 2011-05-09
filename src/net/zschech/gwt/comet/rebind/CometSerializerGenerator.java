@@ -67,8 +67,8 @@ public class CometSerializerGenerator extends GeneratorExt {
 					throw new UnableToCompleteException();
 				}
 				
-				SerializableTypeOracleBuilder typesSentToBrowserBuilder = new SerializableTypeOracleBuilder(logger, context.getPropertyOracle(), typeOracle);
-				SerializableTypeOracleBuilder typesSentFromBrowserBuilder = new SerializableTypeOracleBuilder(logger, context.getPropertyOracle(), typeOracle);
+				SerializableTypeOracleBuilder typesSentToBrowserBuilder = new SerializableTypeOracleBuilder(logger, context.getPropertyOracle(), context);
+				SerializableTypeOracleBuilder typesSentFromBrowserBuilder = new SerializableTypeOracleBuilder(logger, context.getPropertyOracle(), context);
 				
 				for (Class<? extends Serializable> serializable : annotation.value()) {
 					int rank = 0;
